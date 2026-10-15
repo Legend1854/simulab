@@ -119,7 +119,7 @@ describe('file-level rejection (corrupted or unsupported workbooks)', () => {
 describe('row-level validation with sheet, row and column', () => {
   it('reports a non-numeric return', () => {
     const issue = issues(importWith((sheets) => setCell(sheets, 'Returns', 'ReturnPct', 4, 'eight'))).find((i) => i.code === 'invalid_number');
-    expect(issue?.location).toEqual({ sheet: 'Returns', row: 4, column: 'ReturnPct' });
+    expect(issue?.location).toEqual({ sheet: 'Returns', row: 4, column: 'ReturnPct', cell: 'C4' });
     expect(issue?.message).toBe('"ReturnPct" must be a number, but it contains "eight".');
   });
 
@@ -269,7 +269,7 @@ describe('isDateFormat', () => {
 describe('errors do not cascade across sheets', () => {
   it('a scenario with a missing title is reported once, and its returns are not reported as unknown', () => {
     const result = importWith((sheets) => setCell(sheets, 'Scenarios', 'Title', 3, undefined));
-    expect(issues(result)).toEqual([expect.objectContaining({ code: 'required', location: { sheet: 'Scenarios', row: 3, column: 'Title' } })]);
+    expect(issues(result)).toEqual([expect.objectContaining({ code: 'required', location: { sheet: 'Scenarios', row: 3, column: 'Title', cell: 'C3' } })]);
   });
   it('an asset with an invalid risk rating is reported once', () => {
     expect(codes(importWith((sheets) => setCell(sheets, 'Assets', 'RiskRating', 2, 'low')))).toEqual(['invalid_number']);

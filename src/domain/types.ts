@@ -143,6 +143,8 @@ export interface IssueLocation {
   /** Spreadsheet row number as shown in Excel (the header row is row 1). */
   row?: number;
   column?: string;
+  /** A1-style cell reference on that sheet, e.g. "C4", when the column could be located. */
+  cell?: string;
   /** Dotted path into the typed model, e.g. `scenarios[1].returnsPct.cash`. */
   path?: string;
 }

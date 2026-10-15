@@ -1,6 +1,7 @@
 import { SCHEMA_VERSION } from '../../domain/constants';
 import type { Asset, ImportSummary, RiskProfile, Scenario, SimulationConfig, SpreadsheetImportResult, ValidationIssue } from '../../domain/types';
 import { validateConfig } from '../../domain/validation';
+import { columnLetters } from './ooxml/cellRef';
 import { isDateFormat, isPercentFormat } from './ooxml/numberFormats';
 import { cellKey, readXlsx, XlsxReadError, type XlsxCell, type XlsxSheet, type XlsxWorkbook } from './ooxml/readXlsx';
 import { COLUMNS, FILE_LIMITS, REQUIRED_SHEETS, SETTINGS, SHEET_NAMES, type ColumnSpec } from './schema';
@@ -38,13 +39,17 @@ interface Table {
 class IssueLog {
   private readonly items: ValidationIssue[] = [];
   private overflow = 0;
+  /** Column index of each (normalised) header, per sheet, so problems can name an exact cell such as C4. */
+  readonly columns = new Map<string, Map<string, number>>();
 
   add(severity: ValidationIssue['severity'], code: string, message: string, sheet?: string, row?: number, column?: string): void {
     if (this.items.length >= FILE_LIMITS.maxReportedIssues) {
       this.overflow += 1;
       return;
     }
-    const location = { ...(sheet ? { sheet } : {}), ...(row ? { row } : {}), ...(column ? { column } : {}) };
+    const colIndex = sheet && column ? this.columns.get(sheet)?.get(normalise(column)) : undefined;
+    const cell = colIndex !== undefined && row ? `${columnLetters(colIndex)}${row}` : undefined;
+    const location = { ...(sheet ? { sheet } : {}), ...(row ? { row } : {}), ...(column ? { column } : {}), ...(cell ? { cell } : {}) };
     this.items.push({ code, severity, message, location });
   }
   error(code: string, message: string, sheet?: string, row?: number, column?: string): void {
@@ -117,6 +122,7 @@ function readTable(sheet: XlsxSheet, sheetName: string, expected: ReadonlyArray<
     const header = readCell(sheet, range.firstRow, c);
     if (typeof header.value === 'string') headerByIndex.set(c, header.value);
   }
+  log.columns.set(sheetName, new Map([...headerByIndex].map(([index, name]) => [normalise(name), index])));
   const headerRow = range.firstRow + 1;
   const seen = new Set<string>();
   for (const header of headerByIndex.values()) {
