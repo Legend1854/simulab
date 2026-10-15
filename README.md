@@ -60,10 +60,18 @@ All ten screenshots in `docs/screenshots/` are captured from the running app by 
 
 ## Requirements
 
-- Node.js 20.19 or later (tested with Node 22.22.0 and npm 10.9.4)
-- For browser tests: Playwright's Chromium (`npx playwright install chromium`, one-off)
+- Node.js 22.12 or later on the 22.x line, or Node 24.x. Node 20 is **not** supported: the test runner (Vitest 5)
+  requires `^22.12.0 || ^24.0.0 || >=26.0.0`. Check with `node --version`.
+- Tested with Node 22.22.0 and npm 10.9.4 on Linux. The project has not been run on Windows or macOS by the author; the
+  npm commands below are the same in PowerShell.
+- For browser tests: Playwright's Chromium (`npx playwright install chromium`, one-off).
 
 ## Getting started
+
+Run every command in the `simulab` folder, the one that contains `package.json` and `package-lock.json`. The zip
+extracts to a `simulab` folder, and Windows' "Extract All" puts that inside another folder named after the zip (for
+example `SimuLab\simulab`). Running `npm ci` one level too high fails with
+`npm error code EUSAGE … can only install with an existing package-lock.json`.
 
 ```bash
 npm ci                 # install the exact versions in package-lock.json
@@ -116,8 +124,11 @@ Regenerate them with `npm run gen:workbooks`. The full format is in `docs/MODEL_
 The build is a static site with hash-based routes (`#/student`, `#/instructor/...`), so any static host works with no
 rewrite rules: upload `dist/`.
 
-- **Sub-path hosting:** set `BASE_PATH`, for example `BASE_PATH=/simulab/ npm run build`. A local check confirmed that a
-  build with `BASE_PATH=/simulab/` serves its page and scripts under `/simulab/`.
+- **Sub-path hosting:** set `BASE_PATH`, for example `BASE_PATH=/simulab/ npm run build` (macOS/Linux) or
+  `$env:BASE_PATH="/simulab/"; npm run build` (PowerShell). In PowerShell the variable stays set for the whole window, so
+  clear it afterwards with `Remove-Item Env:BASE_PATH`; otherwise later builds, including the one `npm run test:e2e`
+  makes, also use the sub-path and the browser tests fail. A local check on Linux confirmed that a build with
+  `BASE_PATH=/simulab/` serves its page and scripts under `/simulab/`.
 - **GitHub Pages:** `.github/workflows/deploy-pages.yml` builds with `BASE_PATH=/<repository-name>/` and deploys. Set the
   repository's Pages source to "GitHub Actions" first.
 - **CI:** `.github/workflows/ci.yml` runs the typecheck, Vitest, the build, the legacy tests and Playwright.
