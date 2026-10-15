@@ -6,7 +6,20 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   plugins: [react()],
-  build: { sourcemap: true },
+  build: {
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Separate long-lived vendor chunks; SheetJS is only fetched when the instructor dashboard opens.
+        manualChunks: (id) => {
+          if (id.includes('node_modules/xlsx')) return 'sheetjs';
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-vendor')) return 'charts';
+          if (id.includes('node_modules/react') || id.includes('node_modules/scheduler')) return 'react';
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

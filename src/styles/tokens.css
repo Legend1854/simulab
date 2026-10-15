@@ -1,0 +1,38 @@
+/* Design tokens. Contrast ratios against --surface are noted where text uses the colour. */
+:root {
+  --ink: #102a3a;          /* primary text, 14.9:1 */
+  --ink-2: #33495a;        /* secondary text, 9.2:1 */
+  --muted: #5a6b7a;        /* labels and hints, 5.5:1 */
+  --paper: #f2f4f6;        /* page background */
+  --surface: #ffffff;
+  --surface-2: #f7f9fa;    /* table headers, quiet fills */
+  --rule: #d4dbe2;
+  --rule-strong: #aebbc6;
+
+  --teal: #0b7a75;         /* actions, focus, current round, 5.2:1 */
+  --teal-strong: #08605c;
+  --teal-wash: #e5f3f1;
+  --teal-track: #cfe6e3;
+  --teal-on-ink: #7fd1c9;  /* accent on the navy formula bar */
+
+  --gain: #1d7148;         /* 6.0:1, always paired with a ▲ and a word */
+  --loss: #b03a2e;         /* 6.0:1, always paired with a ▼ and a word */
+
+  --ok-ink: #155c3a; --ok-bg: #e8f5ee; --ok-rule: #b6dcc6;
+  --warn-ink: #6f4800; --warn-bg: #fff5de; --warn-rule: #ecd08e;
+  --error-ink: #9b2c22; --error-bg: #fdeeec; --error-rule: #efbdb6;
+
+  --font: 'Public Sans Variable', 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --text-xs: 0.75rem;   /* 12 */
+  --text-sm: 0.8125rem; /* 13 */
+  --text-base: 0.9375rem; /* 15 */
+  --text-md: 1.1875rem; /* 19 */
+  --text-lg: 1.5rem;    /* 24 */
+  --text-xl: 1.875rem;  /* 30 */
+  --text-2xl: 2.375rem; /* 38 */
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --shell: 1240px;
+}
