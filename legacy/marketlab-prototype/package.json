@@ -1,0 +1,10 @@
+{
+  "name": "marketlab-investment-simulation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline-friendly educational spreadsheet-to-web investment simulation prototype",
+  "scripts": {
+    "test": "node --test tests/simulation.test.mjs"
+  }
+}

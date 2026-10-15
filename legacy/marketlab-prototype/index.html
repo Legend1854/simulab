@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An educational, interactive investment simulation demonstrating how spreadsheet-style rules can power a web application.">
+  <title>MarketLab | Investment Simulation</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#main" aria-label="MarketLab home"><span class="brand-mark">M</span><span>marketlab<span class="brand-dot">.</span></span></a>
+    <div class="topbar-right"><span class="mode-pill"><span class="status-dot"></span> LEARNING SIMULATION</span><button id="resetBtn" class="button button-quiet" type="button">Reset session</button></div>
+  </header>
+
+  <main id="main" class="page-shell">
+    <section class="page-heading">
+      <div>
+        <p class="eyebrow">DECISION LAB / PORTFOLIO CHALLENGE</p>
+        <h1>Make decisions.<br><span>See the impact.</span></h1>
+        <p class="lead">Build an allocation, respond to changing market conditions and learn how return, risk and diversification interact over five simulated years.</p>
+      </div>
+      <aside class="challenge-card">
+        <span class="challenge-label">YOUR STARTING CAPITAL</span>
+        <strong id="startingCapital">$10,000</strong>
+        <div class="challenge-divider"></div>
+        <div class="challenge-meta"><span>Duration</span><b>5 rounds</b></div>
+        <div class="challenge-meta"><span>Initial level</span><b>01 / Foundations</b></div>
+      </aside>
+    </section>
+
+    <section class="progress-section" aria-label="Simulation progress">
+      <div class="progress-top"><div><span class="eyebrow">YOUR PROGRESS</span><strong id="progressLabel">Year 1 of 5</strong></div><span id="levelPill" class="level-pill">LEVEL 1 · FOUNDATIONS</span></div>
+      <div class="progress-track"><div id="progressBar" class="progress-fill" style="width:0%"></div></div>
+      <div class="progress-steps"><span>Foundations</span><span>Market shifts</span><span>Final review</span></div>
+    </section>
+
+    <section class="metric-grid" aria-label="Portfolio summary">
+      <article class="metric-card"><span class="metric-label">PORTFOLIO VALUE</span><strong id="portfolioValue">$10,000.00</strong><span class="metric-foot">Current simulated balance</span></article>
+      <article class="metric-card"><span class="metric-label">TOTAL RETURN</span><strong id="totalReturn">0.00%</strong><span class="metric-foot" id="returnDollars">$0.00 gain / loss</span></article>
+      <article class="metric-card"><span class="metric-label">AVERAGE DECISION SCORE</span><strong id="averageScore">—</strong><span class="metric-foot">Out of 100 points</span></article>
+      <article class="metric-card"><span class="metric-label">YEARS COMPLETED</span><strong id="yearsCompleted">0 <small>/ 5</small></strong><span class="metric-foot">Each year unlocks the next</span></article>
+    </section>
+
+    <div class="work-grid">
+      <section class="panel decisions-panel" aria-labelledby="decisionTitle">
+        <div class="panel-heading"><div><p class="eyebrow">YOUR MOVE</p><h2 id="decisionTitle">Set your allocation</h2></div><span id="allocationState" class="state-pill valid">100% allocated</span></div>
+        <p class="panel-intro">Choose how to distribute your capital before the current market round. Allocation percentages must total exactly 100%.</p>
+
+        <div class="field-group">
+          <label for="riskProfile">Investment approach</label>
+          <select id="riskProfile">
+            <option value="conservative">Conservative · prioritise stability</option>
+            <option value="balanced" selected>Balanced · mix growth and stability</option>
+            <option value="growth">Growth · accept higher volatility</option>
+          </select>
+          <p class="field-help">Your decision score considers whether your allocation matches your stated approach.</p>
+        </div>
+
+        <div class="allocation-list">
+          <div class="allocation-row">
+            <div class="asset-icon cash-icon">$</div><div class="asset-name"><label for="cashAllocation">Cash</label><span>Lower volatility</span></div><div class="input-wrap"><input id="cashAllocation" class="allocation-input" type="number" min="0" max="100" step="5" value="15" inputmode="numeric" aria-label="Cash allocation percentage"><span>%</span></div>
+          </div>
+          <div class="allocation-row">
+            <div class="asset-icon bond-icon">B</div><div class="asset-name"><label for="bondsAllocation">Bonds</label><span>Income and stability</span></div><div class="input-wrap"><input id="bondsAllocation" class="allocation-input" type="number" min="0" max="100" step="5" value="25" inputmode="numeric" aria-label="Bonds allocation percentage"><span>%</span></div>
+          </div>
+          <div class="allocation-row">
+            <div class="asset-icon market-icon">M</div><div class="asset-name"><label for="marketAllocation">Broad market</label><span>Diversified equity exposure</span></div><div class="input-wrap"><input id="marketAllocation" class="allocation-input" type="number" min="0" max="100" step="5" value="40" inputmode="numeric" aria-label="Broad market allocation percentage"><span>%</span></div>
+          </div>
+          <div class="allocation-row">
+            <div class="asset-icon tech-icon">T</div><div class="asset-name"><label for="techAllocation">Technology</label><span>Higher growth and volatility</span></div><div class="input-wrap"><input id="techAllocation" class="allocation-input" type="number" min="0" max="100" step="5" value="20" inputmode="numeric" aria-label="Technology allocation percentage"><span>%</span></div>
+          </div>
+        </div>
+        <div class="allocation-total"><span>Total allocated</span><strong id="allocationTotal">100%</strong></div>
+        <div id="validationMessage" class="validation-message" role="status" aria-live="polite">Allocation is balanced and ready to submit.</div>
+        <button id="runYearBtn" class="button button-primary button-full" type="button">Run Year 1 <span aria-hidden="true">↗</span></button>
+        <p class="small-note">Each round applies the published scenario assumptions in this prototype. Decisions can change between rounds.</p>
+      </section>
+
+      <div class="right-column">
+        <section class="panel scenario-panel" aria-labelledby="scenarioTitle">
+          <div class="panel-heading"><div><p class="eyebrow" id="scenarioEyebrow">YEAR 1 / 5 · BASELINE</p><h2 id="scenarioTitle">A steady start</h2></div><span class="scenario-icon" aria-hidden="true">↗</span></div>
+          <p id="scenarioDescription" class="scenario-description">Markets are constructive. Growth assets lead, while bonds and cash provide more modest returns.</p>
+          <div class="scenario-insight"><span class="insight-mark">i</span><p id="scenarioLesson"><strong>Learning focus</strong><br>Compare potential returns with the risk you are willing to accept.</p></div>
+          <div class="market-return-grid" id="marketReturnGrid" aria-label="Scenario asset returns"></div>
+        </section>
+
+        <section class="panel chart-panel" aria-labelledby="chartTitle">
+          <div class="panel-heading"><div><p class="eyebrow">PERFORMANCE</p><h2 id="chartTitle">Portfolio growth</h2></div><span class="chart-key"><span class="chart-key-dot"></span> Your balance</span></div>
+          <div class="chart-summary"><strong id="chartCurrentValue">$10,000</strong><span id="chartChange">No rounds completed</span></div>
+          <div id="portfolioChart" class="chart-area" role="img" aria-label="Portfolio value chart will appear after completing the first simulated year"><div class="chart-empty"><span class="chart-empty-icon">⌁</span><span>Your performance line will appear after Year 1.</span></div></div>
+          <div class="chart-axis-labels"><span>Start</span><span id="chartEndLabel">Year 0</span></div>
+        </section>
+      </div>
+    </div>
+
+    <section class="panel history-panel" aria-labelledby="historyTitle">
+      <div class="panel-heading"><div><p class="eyebrow">AUDIT TRAIL</p><h2 id="historyTitle">Round history</h2></div><div class="history-actions"><button id="exportBtn" class="button button-quiet export-button" type="button" disabled>Export CSV</button><span class="history-count" id="historyCount">0 entries</span></div></div>
+      <div class="table-wrap"><table><thead><tr><th scope="col">ROUND</th><th scope="col">MARKET SCENARIO</th><th scope="col">ALLOCATION</th><th scope="col">RETURN</th><th scope="col">ENDING VALUE</th><th scope="col">DECISION SCORE</th></tr></thead><tbody id="historyBody"><tr class="empty-row"><td colspan="6">Your decisions and results will be recorded here after each round.</td></tr></tbody></table></div>
+      <div id="finalReview" class="final-review" hidden></div>
+    </section>
+
+    <footer class="page-footer"><span>MARKETLAB · INTERACTIVE PROTOTYPE</span><span>Illustrative assumptions only. Not financial advice.</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
