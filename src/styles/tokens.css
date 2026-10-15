@@ -1,38 +1,116 @@
-/* Design tokens. Contrast ratios against --surface are noted where text uses the colour. */
+/*
+ * SimuLab design tokens.
+ *
+ * Concept: an analyst's computation pad. The page is pale green ledger paper; working surfaces are
+ * white "sheets"; ink is a deep blue-green; petrol marks anything committed or actionable; ochre marks
+ * anything provisional or contextual (a projection, the current round, scenario facts).
+ *
+ * Contrast ratios were measured with the WCAG formula (see docs/DESIGN_DECISIONS.md). Text tokens are
+ * all >= 4.5:1 on the surfaces they are used on; control and data-mark tokens are >= 3:1.
+ *
+ * Breakpoints cannot be CSS variables inside media queries, so they are listed here and used as
+ * literal values: wide >= 1081px, tablet 761-1080px, phone <= 760px, narrow phone <= 400px.
+ */
 :root {
-  --ink: #102a3a;          /* primary text, 14.9:1 */
-  --ink-2: #33495a;        /* secondary text, 9.2:1 */
-  --muted: #5a6b7a;        /* labels and hints, 5.5:1 */
-  --paper: #f2f4f6;        /* page background */
-  --surface: #ffffff;
-  --surface-2: #f7f9fa;    /* table headers, quiet fills */
-  --rule: #d4dbe2;
-  --rule-strong: #aebbc6;
+  /* Surfaces */
+  --paper: #e8ede7;            /* page: ledger-paper tint */
+  --paper-rule: #d6ddd7;       /* faint ledger lines drawn on paper */
+  --sheet: #fbfbf8;            /* working surfaces */
+  --sheet-2: #f3f5f1;          /* table headers, quiet fills inside a sheet */
+  --rule: #d3dbd5;             /* borders and dividers (decorative, not a control boundary) */
+  --rule-strong: #788783;      /* control borders: 3.6:1 on sheet */
 
-  --teal: #0b7a75;         /* actions, focus, current round, 5.2:1 */
-  --teal-strong: #08605c;
-  --teal-wash: #e5f3f1;
-  --teal-track: #cfe6e3;
-  --teal-on-ink: #7fd1c9;  /* accent on the navy formula bar */
+  /* Ink */
+  --ink: #13262b;              /* 15.1:1 on sheet, 13.2:1 on paper */
+  --ink-2: #3c4d52;            /* 7.5:1 on paper */
+  --muted: #56666a;            /* 5.8:1 on sheet, 5.1:1 on paper */
+  --on-ink: #ffffff;
+  --on-ink-dim: #b9cbc6;       /* secondary text on ink, 9.3:1 */
 
-  --gain: #1d7148;         /* 6.0:1, always paired with a ▲ and a word */
-  --loss: #b03a2e;         /* 6.0:1, always paired with a ▼ and a word */
+  /* Petrol: committed, interactive */
+  --petrol: #0d5c63;           /* 7.4:1 on sheet; white on petrol 7.7:1 */
+  --petrol-deep: #08454a;
+  --petrol-wash: #dcebe8;
+  --petrol-track: #c4dbd7;
+  --petrol-on-ink: #7fd1c9;    /* petrol accent on the ink formula sheet, 8.9:1 */
 
-  --ok-ink: #155c3a; --ok-bg: #e8f5ee; --ok-rule: #b6dcc6;
-  --warn-ink: #6f4800; --warn-bg: #fff5de; --warn-rule: #ecd08e;
-  --error-ink: #9b2c22; --error-bg: #fdeeec; --error-rule: #efbdb6;
+  /* Ochre: provisional, contextual */
+  --ochre: #b5830f;            /* marks on sheet, 3.3:1 */
+  --ochre-stroke: #9c7008;     /* marks on paper, 3.7:1 */
+  --ochre-ink: #7a5508;        /* text, 6.5:1 on sheet, 5.7:1 on wash */
+  --ochre-wash: #f6ebcf;
+  --ochre-on-ink: #e2b54a;     /* 8.2:1 on ink */
 
-  --font: 'Public Sans Variable', 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --text-xs: 0.75rem;   /* 12 */
-  --text-sm: 0.8125rem; /* 13 */
-  --text-base: 0.9375rem; /* 15 */
-  --text-md: 1.1875rem; /* 19 */
-  --text-lg: 1.5rem;    /* 24 */
-  --text-xl: 1.875rem;  /* 30 */
-  --text-2xl: 2.375rem; /* 38 */
+  /* Meaning (always paired with an icon or word) */
+  --gain: #22703f;             /* 5.9:1 */
+  --loss: #a33a2b;             /* 6.3:1 */
+  --ok-ink: #1f6638;  --ok-bg: #e3f0e6;  --ok-rule: #a9cfb3;
+  --warn-ink: #7a5508; --warn-bg: #f6ebcf; --warn-rule: #dfc27c;
+  --error-ink: #9e2f24; --error-bg: #f9e7e3; --error-rule: #e5b0a7;
 
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  /* Data identity (asset colours). Order validated for colour-vision deficiency on --sheet:
+     worst adjacent CVD ΔE 12.2, normal-vision ΔE 24.2, all >= 3:1. Never used for text. */
+  --series-1: #008f86;
+  --series-2: #c0532f;
+  --series-3: #3d6bc4;
+  --series-4: #4f8a1c;
+  --series-5: #8a4fa8;
+  --series-6: #b98300;
+  --series-7: #2b9bd1;
+  --series-8: #d0607f;
+
+  /* Type */
+  --font-sans: 'Public Sans Variable', 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;      /* 12 */
+  --text-sm: 0.8125rem;    /* 13 */
+  --text-base: 0.9375rem;  /* 15 */
+  --text-md: 1.0625rem;    /* 17 */
+  --text-lg: 1.375rem;     /* 22 */
+  --text-xl: 1.875rem;     /* 30 */
+  --text-2xl: 2.75rem;     /* 44, home headline only */
+  --leading-tight: 1.15;
+  --leading-body: 1.55;
+  --weight-regular: 400;
+  --weight-medium: 550;
+  --weight-strong: 650;
+  --weight-heavy: 760;
+
+  /* Space (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 72px;
+
+  /* Shape: controls are tighter than the sheets they sit on */
   --radius-control: 6px;
-  --radius-panel: 10px;
+  --radius-sheet: 10px;
+  --radius-pill: 999px;
+
+  /* Elevation: sheets are flat (a rule, not a shadow); only things that float get a shadow */
+  --shadow-float: 0 18px 48px rgba(19, 38, 43, 0.22), 0 2px 6px rgba(19, 38, 43, 0.12);
+  --shadow-sticky: 0 6px 18px rgba(19, 38, 43, 0.18);
+
+  /* Focus */
+  --focus-ring: 0 0 0 3px var(--sheet), 0 0 0 5px var(--petrol);
+  --focus-outline: 3px solid var(--petrol);
+
+  /* Motion: short, and only in answer to an action */
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --duration-quick: 120ms;
+  --duration-base: 200ms;
+
+  /* Layers */
+  --z-sticky: 10;
+  --z-header: 20;
+  --z-dialog: 50;
+  --z-skip-link: 60;
+
+  /* Layout */
   --shell: 1240px;
+  --measure: 68ch;
 }

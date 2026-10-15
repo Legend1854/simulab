@@ -46,7 +46,7 @@ function Dialog({ state, onClose }: { state: DialogState; onClose: (confirmed: b
 
   return (
     <div className="dialog-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose(false)}>
-      <div ref={dialogRef} className="dialog" role="alertdialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId} onKeyDown={onKeyDown}>
+      <div ref={dialogRef} className="dialog" data-tone={state.tone ?? 'primary'} role="alertdialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={bodyId} onKeyDown={onKeyDown}>
         <h2 id={titleId}>{state.title}</h2>
         <div id={bodyId} className="stack-sm">{typeof state.body === 'string' ? <p>{state.body}</p> : state.body}</div>
         <div className="dialog-actions">

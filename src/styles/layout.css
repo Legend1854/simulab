@@ -1,0 +1,41 @@
+/* Page frame: header, main column, footer. */
+
+.shell { max-width: var(--shell); margin: 0 auto; padding: 0 var(--space-5); }
+
+.site-header { position: relative; z-index: var(--z-header); background: var(--sheet); border-bottom: 1px solid var(--rule); }
+.site-header .shell { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); min-height: 64px; flex-wrap: wrap; }
+.wordmark { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: var(--weight-heavy); font-size: 1.125rem; letter-spacing: -0.02em; }
+.wordmark:hover { color: var(--ink); text-decoration: none; }
+.wordmark svg { flex: none; }
+.site-nav ul { display: flex; gap: var(--space-1); list-style: none; margin: 0; padding: 0; }
+.site-nav a {
+  display: flex; align-items: center; gap: 6px; min-height: 64px; padding: 0 12px;
+  color: var(--ink-2); text-decoration: none; font-weight: var(--weight-strong); font-size: var(--text-sm);
+  box-shadow: inset 0 -3px 0 transparent; transition: box-shadow var(--duration-quick) var(--ease-out), color var(--duration-quick) var(--ease-out);
+}
+.site-nav a:hover { color: var(--ink); box-shadow: inset 0 -3px 0 var(--rule-strong); }
+.site-nav a[aria-current='page'] { color: var(--ink); box-shadow: inset 0 -3px 0 var(--petrol); }
+.site-nav .role-tag { font-size: var(--text-xs); color: var(--muted); font-weight: var(--weight-medium); }
+
+main { padding: var(--space-6) 0 var(--space-8); }
+main:focus { outline: none; }
+
+.page-head { margin-bottom: var(--space-5); }
+.page-head p { color: var(--ink-2); margin-top: var(--space-2); max-width: var(--measure); }
+
+.site-footer { border-top: 1px solid var(--rule); background: var(--sheet); padding: var(--space-5) 0 var(--space-6); color: var(--muted); font-size: var(--text-sm); }
+.site-footer .shell { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) var(--space-5); align-items: start; }
+.site-footer p + p { margin-top: var(--space-1); }
+
+@media (max-width: 760px) {
+  .shell { padding: 0 var(--space-4); }
+  main { padding: var(--space-5) 0 var(--space-7); }
+  .site-header .shell { min-height: 0; padding-top: var(--space-3); gap: 0; }
+  .site-nav { width: 100%; margin: 0 calc(var(--space-2) * -1); }
+  .site-nav ul { gap: 0; }
+  .site-nav a { min-height: 48px; padding: 0 var(--space-2); }
+  .site-footer .shell { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 400px) {
+  .site-nav .role-tag { display: none; }
+}

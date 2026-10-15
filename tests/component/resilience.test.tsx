@@ -12,7 +12,7 @@ describe('resilience', () => {
     const { user } = renderApp('#/', storage);
     expect(screen.getByText(/saved configuration failed validation, so the defaults were loaded/)).toBeInTheDocument();
     expect(screen.getByText(/Saved sessions could not be read/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Five market rounds. Every number explained.');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('An investment simulation that shows its working.');
     await user.click(screen.getAllByRole('button', { name: 'Dismiss' })[0]!);
     expect(screen.getAllByRole('button', { name: 'Dismiss' })).toHaveLength(1);
   });

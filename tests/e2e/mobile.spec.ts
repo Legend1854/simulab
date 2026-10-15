@@ -12,6 +12,6 @@ test('a round can be completed on a phone-sized screen without horizontal scroll
   await expect(page.getByRole('heading', { name: 'Round 1 result' })).toBeVisible();
   expect(await overflow()).toBe(0);
   await page.goto('/#/instructor/scenarios');
-  await expect(page.getByRole('heading', { level: 1, name: 'Instructor dashboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Instructor workspace' })).toBeVisible();
   expect(await overflow()).toBe(0); // wide tables scroll inside their own container
 });

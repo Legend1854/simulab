@@ -32,7 +32,8 @@ test.describe('instructor journey', () => {
     await page.getByRole('alertdialog').getByRole('button', { name: 'Apply configuration' }).click();
 
     await startSimulation(page);
-    await expect(page.getByText('Round 1 of 6: Expansion')).toBeVisible();
+    await expect(page.getByText('Round 1 of 6', { exact: true })).toBeVisible();
+    await expect(page.getByText('Expansion', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { level: 1, name: 'Soft landing' })).toBeVisible();
     await expect(page.getByText('$25,000.00').first()).toBeVisible();
   });
@@ -45,6 +46,7 @@ test.describe('instructor journey', () => {
     await expect(problems.getByRole('row')).toHaveCount(5);
     await expect(problems).toContainText('Duplicate asset ID "bonds" (already used on row 3).');
     await expect(problems).toContainText('"ReturnPct" must be a number, but it contains "five".');
+    await expect(problems.getByRole('row').filter({ hasText: 'five' })).toContainText('Returns!C3');
     await expect(page.getByText('The current configuration has not changed.')).toBeVisible();
   });
 
@@ -62,7 +64,7 @@ test.describe('instructor journey', () => {
     await page.getByRole('button', { name: 'Save configuration' }).click();
     await expect(page.getByText(/Configuration saved/)).toBeVisible();
     await startSimulation(page);
-    await expect(page.getByText('The annual fee of 2% is deducted')).toBeVisible();
+    await expect(page.getByText(/a 2% annual fee is then deducted/)).toBeVisible();
     await expect(page.getByTestId('projection-summary')).toContainText('Ending balance $10,525.00');
   });
 
@@ -76,5 +78,24 @@ test.describe('instructor journey', () => {
     await page.getByRole('button', { name: 'Delete all sessions' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete all sessions' }).click();
     await expect(page.getByText('No sessions yet')).toBeVisible();
+  });
+
+  test('the validation summary takes a keyboard user straight to the field to fix', async ({ page }) => {
+    await page.goto('/#/instructor/scenarios');
+    await page.getByLabel('Round 2 Technology equities return').fill('-120');
+    await expect(page.getByRole('heading', { name: '1 problem to fix before saving' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save configuration' })).toBeDisabled();
+    await page.getByRole('link', { name: /Settings and scoring/ }).click();
+    await expect(page.getByLabel('Annual management fee')).toBeVisible();
+
+    const problem = page.getByRole('button', { name: /Round 2 \(A sudden sell-off\) return for "tech_equities"/ });
+    await problem.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#\/instructor\/scenarios$/);
+    await expect(page.getByLabel('Round 2 Technology equities return')).toBeFocused();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('-28');
+    await expect(page.getByRole('region', { name: 'Unsaved changes' })).toContainText('Everything checks out');
+    await expect(page.getByRole('button', { name: 'Save configuration' })).toBeEnabled();
   });
 });

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { activeSessionOf, createAppStore } from '../../src/app/store';
 import { MemoryStore } from '../../src/services/persistence/storage';
@@ -21,7 +21,8 @@ const sample = (name: string): File => {
 describe('instructor: settings and scoring', () => {
   it('labels the role switch honestly', async () => {
     renderApp('#/instructor/settings');
-    expect(await screen.findByText(/demo role switch, not access control/)).toBeInTheDocument();
+    expect(await screen.findByText(/role switch for the demonstration, not access control/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Instructor workspace' })).toBeInTheDocument();
   });
 
   it('edits the fee as an unsaved change, saves it, and new sessions use it', async () => {
@@ -29,11 +30,13 @@ describe('instructor: settings and scoring', () => {
     const fee = await screen.findByLabelText('Annual management fee');
     await user.clear(fee);
     await user.type(fee, '1.25');
-    expect(screen.getByRole('region', { name: 'Unsaved changes' })).toHaveTextContent('Ready to save');
+    expect(screen.getByRole('region', { name: 'Unsaved changes' })).toHaveTextContent('Everything checks out');
+    expect(screen.getByText('Unsaved changes', { selector: '.pill' })).toBeInTheDocument();
     expect(store.getState().config.annualFeePct).toBe(0.5); // nothing saved yet
 
     await user.click(screen.getByRole('button', { name: 'Save configuration' }));
     expect(screen.getByText(/Configuration saved. New simulations use it/)).toBeInTheDocument();
+    expect(screen.getByText('All changes saved')).toBeInTheDocument();
     expect(store.getState().config.annualFeePct).toBe(1.25);
 
     store.startSession('');
@@ -46,13 +49,15 @@ describe('instructor: settings and scoring', () => {
     await user.clear(weight);
     await user.type(weight, '60');
     expect(screen.getByText(/Weights total 110% \(must be exactly 100%\)/)).toBeInTheDocument();
-    expect(screen.getByText('Score weights must total 100% (currently 110%).')).toBeInTheDocument();
+    // Shown next to the weights and listed in the validation summary.
+    expect(screen.getAllByText('Score weights must total 100% (currently 110%).')).toHaveLength(2);
+    expect(screen.getByRole('heading', { name: '1 problem to fix before saving' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save configuration' })).toBeDisabled();
     expect(screen.getByRole('region', { name: 'Unsaved changes' })).toHaveTextContent('Fix 1 problem before saving');
 
     await user.clear(weight);
     await user.type(weight, 'abc');
-    expect(screen.getByText('Performance weight (%) must be a number.')).toBeInTheDocument();
+    expect(screen.getAllByText('Performance weight (%) must be a number.')).toHaveLength(2);
 
     await user.click(screen.getByRole('button', { name: 'Discard changes' }));
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Discard changes' }));
@@ -65,11 +70,12 @@ describe('instructor: scenarios', () => {
   it('adds a scenario, reorders rounds and deletes with confirmation', async () => {
     const { user, store } = renderApp('#/instructor/scenarios');
     await user.click(await screen.findByRole('button', { name: 'Add scenario' }));
-    expect(screen.getByRole('heading', { name: 'Editing round 6: New scenario' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Round 6 details: New scenario' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Round 6 title')).toHaveValue('New scenario');
 
-    await user.click(screen.getByRole('button', { name: 'Move up round 2' }));
-    const firstRow = screen.getAllByRole('row')[1]!;
-    expect(firstRow).toHaveTextContent('A sudden sell-off');
+    await user.click(screen.getByRole('button', { name: 'Move round 2 up' }));
+    expect(screen.getByLabelText('Round 1 title')).toHaveValue('A sudden sell-off');
+    expect(screen.getByLabelText('Round 2 title')).toHaveValue('A steady start');
 
     await user.click(screen.getByRole('button', { name: 'Delete round 6' }));
     await user.click(within(screen.getByRole('alertdialog', { name: 'Delete round 6?' })).getByRole('button', { name: 'Delete scenario' }));
@@ -77,13 +83,29 @@ describe('instructor: scenarios', () => {
     expect(store.getState().config.scenarios.map((s) => s.id)).toEqual(['s2', 's1', 's3', 's4', 's5']);
   });
 
-  it('flags an invalid return next to its field and on the scenario row', async () => {
+  it('flags an invalid return on its cell, its row and in the validation summary', async () => {
     const { user } = renderApp('#/instructor/scenarios');
-    const cash = await screen.findByLabelText('Cash');
+    const cash = await screen.findByLabelText('Round 1 Cash return');
     await user.clear(cash);
     await user.type(cash, '-150');
-    expect(screen.getByText(/Round 1 \(A steady start\) return for "cash" must be at least -100/)).toBeInTheDocument();
-    expect(screen.getAllByText('⚠ Needs attention')).toHaveLength(1);
+    const message = /Round 1 \(A steady start\) return for "cash" must be at least -100/;
+    expect(cash).toHaveAttribute('aria-invalid', 'true');
+    expect(cash).toHaveAccessibleDescription(message);
+    expect(screen.getByRole('img', { name: '1 problem in round 1' })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Problems in the table' })).toHaveTextContent(message);
+    expect(screen.getByRole('link', { name: /Scenarios\s*1 problem/ })).toBeInTheDocument();
+  });
+
+  it('jumps from the validation summary to the field that needs attention, across tabs', async () => {
+    const { user } = renderApp('#/instructor/scenarios');
+    const cash = await screen.findByLabelText('Round 3 Cash return');
+    await user.clear(cash);
+    await user.type(cash, '600');
+    await user.click(screen.getByRole('link', { name: /Settings and scoring/ }));
+    expect(await screen.findByLabelText('Annual management fee')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Round 3 \(Recovery takes hold\) return for "cash"/ }));
+    await waitFor(() => expect(screen.getByLabelText('Round 3 Cash return')).toHaveFocus());
   });
 });
 
@@ -95,7 +117,9 @@ describe('instructor: spreadsheet import', () => {
     expect(await screen.findByText(/The workbook was not imported. Fix these 4 problems/)).toBeInTheDocument();
     const table = screen.getByRole('table', { name: 'Problems found' });
     expect(within(table).getByText('Duplicate asset ID "bonds" (already used on row 3).')).toBeInTheDocument();
-    expect(within(table).getByText('"ReturnPct" must be a number, but it contains "five".')).toBeInTheDocument();
+    const five = within(table).getByText('"ReturnPct" must be a number, but it contains "five".').closest('tr')!;
+    expect(five).toHaveTextContent('Returns!C3'); // the exact cell to fix
+    expect(screen.getByRole('list', { name: 'Import progress' })).toHaveTextContent('Check every row, problems found');
     expect(store.getState().config).toEqual(before);
   });
 
@@ -104,6 +128,8 @@ describe('instructor: spreadsheet import', () => {
     await chooseFile(sample('SimuLab_Example_RateCycle.xlsx'));
     expect(await screen.findByText('Preview: Rate-cycle pack (fictional example)')).toBeInTheDocument();
     expect(screen.getByRole('table', { name: /Scenario returns by round/ })).toHaveTextContent('Credit scare');
+    const changes = screen.getByRole('table', { name: 'What changes if you apply this workbook' });
+    expect(within(changes).getByRole('rowheader', { name: 'Rounds' }).closest('tr')).toHaveTextContent('56Changes');
     expect(store.getState().config.name).toBe('Five-year portfolio challenge');
 
     await user.click(screen.getByRole('button', { name: 'Apply configuration' }));
@@ -135,9 +161,9 @@ describe('instructor: sessions', () => {
     const { user, store } = renderApp('#/instructor/sessions', storage);
     const row = (await screen.findByRole('rowheader', { name: /Ana/ })).closest('tr')!;
     expect(row).toHaveTextContent('In progress');
-    expect(row).toHaveTextContent('1 / 5');
-    await user.click(within(row).getByRole('button', { name: 'View history for Ana' }));
-    expect(screen.getByRole('table', { name: 'Round history: Ana' })).toBeInTheDocument();
+    expect(row).toHaveTextContent('1 of 5');
+    await user.click(within(row).getByRole('button', { name: 'Show rounds for Ana' }));
+    expect(screen.getByRole('table', { name: 'Rounds played by Ana' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Export all results (CSV)' })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: 'Delete all sessions' }));

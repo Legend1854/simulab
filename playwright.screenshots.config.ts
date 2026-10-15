@@ -8,5 +8,5 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   reporter: [['list']],
-  projects: [{ name: 'screenshots', use: { ...devices['Desktop Chrome'], viewport: { width: 1360, height: 900 } } }],
+  projects: [{ name: 'screenshots', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
 });

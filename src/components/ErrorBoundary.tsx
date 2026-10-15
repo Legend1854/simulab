@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.error) return this.props.children;
     return (
       <main className="shell" id="main">
-        <div className="panel panel-body stack" role="alert">
+        <div className="sheet sheet-section stack" role="alert">
           <h1>Something went wrong</h1>
           <p>SimuLab hit an unexpected error and stopped this page to avoid showing incorrect results.</p>
           <p className="muted small">Details: {this.state.error.message}</p>

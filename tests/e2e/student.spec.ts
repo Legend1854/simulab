@@ -6,7 +6,7 @@ test.describe('student journey', () => {
   test('load, choose the student experience, play all five rounds and export the results', async ({ page }) => {
     // 1. Load the application
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1, name: 'Five market rounds. Every number explained.' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'An investment simulation that shows its working.' })).toBeVisible();
     await expect(page.getByText('It is not financial advice')).toBeVisible();
 
     // 2. Select the student experience
@@ -24,8 +24,9 @@ test.describe('student journey', () => {
 
     // 4 and 5. Submit a valid decision and see the calculated result
     await page.getByRole('button', { name: 'Submit round 1' }).click();
-    const result = page.getByRole('region', { name: 'Round 1 result' });
-    await expect(result.getByText('✓ Submitted')).toBeVisible();
+    const result = page.getByRole('article', { name: 'Round 1 result' });
+    await expect(result.getByText('Submitted', { exact: true })).toBeVisible();
+    await expect(result.getByText('Projection, not submitted')).toHaveCount(0);
     await expect(result.getByText('$10,700.00').first()).toBeVisible();
     await expect(result.getByText('Your portfolio risk of 60 matches the Balanced target exactly.')).toBeVisible();
 
@@ -36,8 +37,8 @@ test.describe('student journey', () => {
 
     // 7. Complete the simulation (the allocation carries over each round)
     for (let round = 2; round <= 5; round += 1) await submitAndContinue(page, round, 5);
-    await expect(page.getByText('Simulation complete: E2E student')).toBeVisible();
-    await expect(page.getByText('Steady decision-maker', { exact: true })).toBeVisible();
+    await expect(page.getByText(/Simulation complete for E2E student/)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Final results: Steady decision-maker' })).toBeVisible();
     await expect(page.getByText('$10,805.89').first()).toBeVisible(); // matches the independently computed five-round balance
 
     // 8. Export results

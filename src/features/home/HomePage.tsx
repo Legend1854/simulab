@@ -1,85 +1,115 @@
-import { useMemo } from 'react';
 import { usePageTitle } from '../../app/usePageTitle';
 import { useAppState } from '../../app/StoreContext';
-import { equalSplitAllocation, evaluateRound } from '../../domain/calculations';
-import { calculationSteps } from '../../domain/explain';
+import { Icon } from '../../components/Icon';
 import { formatCurrencyWhole } from '../../utils/format';
-import { FormulaBar } from '../student/FormulaBar';
+import { Pipeline } from './Pipeline';
 
-const NUMBER_WORDS: Record<number, string> = {
-  1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten', 11: 'Eleven', 12: 'Twelve',
-};
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const inWords = (n: number): string => NUMBER_WORDS[n] ?? String(n);
+
+const STAGES: ReadonlyArray<{ title: string; text: string; href: string | null; link: string | null }> = [
+  {
+    title: 'Configure',
+    text: 'An instructor sets the assets, risk ratings, fee, score weights and market scenarios, in the browser or by importing an Excel workbook that is checked row by row.',
+    href: '#/instructor/settings',
+    link: 'Instructor workspace',
+  },
+  {
+    title: 'Simulate',
+    text: 'A student reads each scenario, picks a risk profile and splits the portfolio. A projection shows the effect before anything is submitted.',
+    href: '#/student',
+    link: 'Student simulation',
+  },
+  {
+    title: 'Verify',
+    text: 'Every result lists its calculation step by step. The engine behind it is tested against the values saved in a reference Excel workbook.',
+    href: null,
+    link: null,
+  },
+  {
+    title: 'Review',
+    text: 'Round reports, a balance history and a CSV export show how decisions played out. Instructors can compare every session stored in the browser.',
+    href: '#/instructor/sessions',
+    link: 'Sessions and results',
+  },
+];
 
 export function HomePage() {
   usePageTitle('Home');
   const { config } = useAppState();
-  const rounds = config.scenarios.length;
-
-  // A real calculation from the current configuration, shown as an example of the formula bar.
-  const example = useMemo(() => {
-    const profile = config.riskProfiles[0];
-    if (!profile) return null;
-    const allocationPct = equalSplitAllocation(config.assets);
-    const outcome = evaluateRound(config, 0, config.startingBalance, { round: 1, allocationPct, riskProfileId: profile.id });
-    return calculationSteps(outcome, config);
-  }, [config]);
 
   return (
-    <>
+    <div className="home">
       <section className="home-hero" aria-labelledby="page-title">
-        <div>
-          <h1 id="page-title" tabIndex={-1}>
-            {NUMBER_WORDS[rounds] ?? rounds} market {rounds === 1 ? 'round' : 'rounds'}. Every number explained.
-          </h1>
-          <p className="lead">
-            SimuLab is an educational investment simulation. You allocate a fictional {formatCurrencyWhole(config.startingBalance)} portfolio,
-            respond to changing market scenarios and see the formula behind every result.
-          </p>
-          <div className="home-actions">
-            <a className="btn btn-primary btn-large" href="#/student">Start the simulation</a>
-            <a className="btn btn-large" href="#/instructor/settings">Open the instructor dashboard</a>
-          </div>
+        <h1 id="page-title" tabIndex={-1}>An investment simulation that shows its working.</h1>
+        <p className="home-lede">
+          SimuLab turns the rules of a spreadsheet game into a web simulation. Students invest a fictional {formatCurrencyWhole(config.startingBalance)} across{' '}
+          {inWords(config.assets.length)} asset classes over {inWords(config.scenarios.length)} market rounds, and every balance and score comes with the
+          formula and numbers that produced it.
+        </p>
+        <div className="home-actions">
+          <a className="btn btn-primary btn-lg" href="#/student">
+            Start the simulation
+          </a>
+          <a className="btn btn-lg" href="#/instructor/settings">
+            Open the instructor workspace
+          </a>
         </div>
-        {example && (
-          <div>
-            <FormulaBar steps={example} caption={`Example: an even split across all assets in round 1 of "${config.name}"`} />
-          </div>
-        )}
       </section>
 
-      <section className="home-paths" aria-label="Ways to use SimuLab">
-        <div className="panel home-path">
-          <h2>For students</h2>
-          <p className="muted">Play {rounds} sequential rounds with the same starting balance and scenarios as everyone else.</p>
-          <ul>
-            <li>Choose a risk profile and split your portfolio across {config.assets.length} asset classes.</li>
-            <li>See a live projection before you commit, then the recorded result after.</li>
-            <li>Understand your score: performance, risk fit and diversification, each with its formula.</li>
-            <li>Finish with a rating, your balance history and a CSV of your decisions.</li>
-          </ul>
-          <a className="btn btn-primary" href="#/student">Start the simulation</a>
+      <Pipeline config={config} />
+
+      <section className="home-how" aria-labelledby="how-title">
+        <h2 id="how-title">How a simulation runs</h2>
+        <ol className="how-steps">
+          {STAGES.map((stage, index) => (
+            <li key={stage.title} className="how-step">
+              <span className="how-n" aria-hidden="true">{index + 1}</span>
+              <h3>{stage.title}</h3>
+              <p>{stage.text}</p>
+              {stage.href && stage.link && <a href={stage.href}>{stage.link}</a>}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="home-paths" aria-label="Ways in">
+        <div className="path path-student">
+          <h2>Play the simulation</h2>
+          <p>
+            {inWords(config.scenarios.length).replace(/^./, (c) => c.toUpperCase())} rounds, one decision each. Your allocation carries over between rounds, so you
+            adjust rather than start again, and you finish with a rating, a balance history and a CSV of your decisions.
+          </p>
+          <a className="btn btn-light btn-lg" href="#/student">
+            Start the simulation
+          </a>
         </div>
-        <div className="panel home-path">
-          <h2>For instructors</h2>
-          <p className="muted">Change the assumptions without touching code.</p>
-          <ul>
-            <li>Edit scenarios, round order, asset returns, risk ratings, fees and score weights.</li>
-            <li>Import a documented Excel workbook, check it row by row, preview it, then apply it.</li>
-            <li>Export the configuration back to Excel and every session's results to CSV.</li>
-            <li>Review and reset the demo sessions stored in this browser.</li>
-          </ul>
-          <a className="btn" href="#/instructor/settings">Open the instructor dashboard</a>
+        <div className="path path-instructor">
+          <div className="row">
+            <h2>Set up the scenarios</h2>
+            <span className="pill">
+              <Icon name="user" size={14} />
+              Demo role, no login
+            </span>
+          </div>
+          <p>
+            Edit assumptions as a validated draft, reorder rounds, or import a workbook and preview it before applying. This is a demonstration role switch, not
+            access control: anyone using this browser can open it.
+          </p>
+          <a className="btn btn-lg" href="#/instructor/settings">
+            Open the instructor workspace
+          </a>
         </div>
       </section>
 
       <section className="home-note" aria-labelledby="about-heading">
         <h2 id="about-heading">About this project</h2>
         <p>
-          SimuLab is an independent portfolio project showing how spreadsheet formulas and game rules can become tested web application logic.
-          All scenarios are invented for teaching. The instructor view is a demonstration role switch, not access control: anyone using this
-          browser can open it. Everything is stored locally in this browser; there is no server or account.
+          SimuLab is an independent student portfolio project about turning spreadsheet formulas and game rules into tested web application logic. It is not
+          affiliated with any university. All scenarios are invented for teaching and nothing here is financial advice. Everything is stored in this browser;
+          there is no server and no account.
         </p>
       </section>
-    </>
+    </div>
   );
 }

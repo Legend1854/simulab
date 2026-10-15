@@ -3,7 +3,7 @@ import type { Asset, RiskProfile, Scenario, SimulationConfig } from './types';
 import { slugId } from '../utils/ids';
 
 /**
- * Pure editing operations used by the instructor dashboard. Each returns a new configuration and keeps
+ * Pure editing operations used by the instructor workspace. Each returns a new configuration and keeps
  * the cross-references consistent (every scenario has a return for every asset). Validation of the
  * values themselves is left to validateConfig().
  */

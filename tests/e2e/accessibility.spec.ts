@@ -26,11 +26,18 @@ test('home, student and results pages pass automated accessibility checks', asyn
 test('instructor tabs pass automated accessibility checks', async ({ page }) => {
   for (const tab of ['settings', 'assets', 'scenarios', 'spreadsheet', 'sessions']) {
     await page.goto(`/#/instructor/${tab}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Instructor dashboard' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Instructor workspace' })).toBeVisible();
     await expectNoViolations(page, `Instructor ${tab}`);
   }
   await page.goto('/#/instructor/spreadsheet');
   await page.getByLabel('Choose an .xlsx workbook').setInputFiles('samples/SimuLab_Invalid_Example.xlsx');
   await expect(page.getByRole('table', { name: 'Problems found' })).toBeVisible();
   await expectNoViolations(page, 'Import errors');
+  await page.getByLabel('Choose an .xlsx workbook').setInputFiles('samples/SimuLab_Example_RateCycle.xlsx');
+  await expect(page.getByRole('table', { name: 'What changes if you apply this workbook' })).toBeVisible();
+  await expectNoViolations(page, 'Import preview');
+  await page.goto('/#/instructor/scenarios');
+  await page.getByLabel('Round 1 Cash return').fill('900');
+  await expect(page.getByRole('heading', { name: '1 problem to fix before saving' })).toBeVisible();
+  await expectNoViolations(page, 'Unsaved changes with a problem');
 });

@@ -3,10 +3,12 @@ import { balanceHistory } from '../../domain/progression';
 import type { SimulationSession } from '../../domain/types';
 import { formatCurrency, formatCurrencyWhole } from '../../utils/format';
 
-const TEAL = '#0b7a75';
-const RULE = '#d4dbe2';
-const MUTED = '#5a6b7a';
-const SURFACE = '#ffffff';
+// SVG presentation attributes cannot read CSS variables, so the chart mirrors these tokens from tokens.css.
+const LINE = '#0d5c63'; // --petrol: recorded results
+const INK = '#13262b'; // --ink
+const RULE = '#d3dbd5'; // --rule
+const MUTED = '#56666a'; // --muted
+const SURFACE = '#fbfbf8'; // --sheet
 
 const compactCurrency = new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', notation: 'compact', maximumFractionDigits: 1 });
 
@@ -46,7 +48,8 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Readonl
 }
 
 /** Portfolio value after each submitted round. Single series, so the title names it and there is no legend. */
-export function BalanceChart({ session, title = 'Portfolio value by round' }: { session: SimulationSession; title?: string }) {
+export function BalanceChart({ session, title = 'Portfolio value by round', headingLevel = 2 }: { session: SimulationSession; title?: string; headingLevel?: 2 | 3 }) {
+  const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const history = balanceHistory(session);
   const data: Point[] = history.map((entry, index) => ({
     label: entry.round === 0 ? 'Start' : `R${entry.round}`,
@@ -64,10 +67,10 @@ export function BalanceChart({ session, title = 'Portfolio value by round' }: { 
         (lowest.round > 0 && lowest.balance < session.config.startingBalance ? `, with a low of ${formatCurrency(lowest.balance)} after round ${lowest.round}.` : '.');
 
   return (
-    <figure className="panel panel-body chart-figure">
-      <h2>{title}</h2>
+    <figure className="sheet sheet-section chart-figure">
+      <Heading className="chart-title">{title}</Heading>
       {history.length < 2 ? (
-        <p className="muted small" style={{ marginTop: 8 }}>{summary} The chart appears after your first submitted round.</p>
+        <p className="muted small">{summary} The chart appears after your first submitted round.</p>
       ) : (
         <>
           <div className="chart-box" aria-hidden="true">
@@ -90,12 +93,12 @@ export function BalanceChart({ session, title = 'Portfolio value by round' }: { 
                 <Line
                   type="linear"
                   dataKey="balance"
-                  stroke={TEAL}
+                  stroke={LINE}
                   strokeWidth={2}
                   strokeLinejoin="round"
                   strokeLinecap="round"
-                  dot={{ r: 4, fill: TEAL, stroke: SURFACE, strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: TEAL, stroke: SURFACE, strokeWidth: 2 }}
+                  dot={{ r: 4, fill: LINE, stroke: SURFACE, strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: LINE, stroke: SURFACE, strokeWidth: 2 }}
                   isAnimationActive={false}
                 >
                   <LabelList
@@ -104,7 +107,7 @@ export function BalanceChart({ session, title = 'Portfolio value by round' }: { 
                       const { x, y, index } = props as { x?: number; y?: number; index?: number };
                       if (index !== data.length - 1 || x === undefined || y === undefined) return null;
                       return (
-                        <text x={Number(x) + 10} y={Number(y) + 4} fill="#102a3a" fontSize={12} fontWeight={650}>
+                        <text x={Number(x) + 10} y={Number(y) + 4} fill={INK} fontSize={12} fontWeight={650}>
                           {formatCurrencyWhole(data[data.length - 1]?.balance ?? 0)}
                         </text>
                       );

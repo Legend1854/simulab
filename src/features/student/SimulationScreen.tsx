@@ -8,14 +8,16 @@ import { equalSplitAllocation } from '../../domain/calculations';
 import { nextRoundOf, projectNextRound } from '../../domain/progression';
 import type { SimulationSession, StudentDecision } from '../../domain/types';
 import { validateAllocation } from '../../domain/validation';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatScore } from '../../utils/format';
+import { Icon } from '../../components/Icon';
 import { BalanceChart } from './BalanceChart';
 import { DecisionForm } from './DecisionForm';
-import { OutcomePanel } from './OutcomePanel';
+import { PortfolioStrip } from './PortfolioStrip';
+import { ProjectionPanel } from './ProjectionPanel';
 import { RoundLedger } from './RoundLedger';
-import { RoundSteps } from './RoundSteps';
+import { RoundReport } from './RoundReport';
+import { RoundTimeline } from './RoundTimeline';
 import { ScenarioBrief } from './ScenarioBrief';
-import { StatRow } from './StatRow';
 
 function initialDraft(session: SimulationSession): { texts: Record<string, string>; riskProfileId: string } {
   const last = session.results[session.results.length - 1];
@@ -64,11 +66,9 @@ function RoundWorkspace({ session, round, onSubmitted }: { session: SimulationSe
     }
   };
 
-  const last = session.results[session.results.length - 1];
-
   return (
-    <div className="sim-grid">
-      <div className="sim-col">
+    <div className="workspace">
+      <div className="workspace-main">
         <ScenarioBrief scenario={scenario} round={round} config={config} />
         <DecisionForm
           config={config}
@@ -84,34 +84,41 @@ function RoundWorkspace({ session, round, onSubmitted }: { session: SimulationSe
           onSubmit={submit}
         />
       </div>
-      <div className="sim-col">
-        <StatRow session={session} />
-        {projection ? (
-          <OutcomePanel outcome={projection} config={config} variant="projection" headingId="projection-title" />
-        ) : (
-          <section className="projection" aria-labelledby="projection-empty-title">
-            <div className="projection-body">
-              <h2 id="projection-empty-title">Projected result for round {round}</h2>
-              <p className="muted">Your projection appears here once the allocation is valid and totals 100%.</p>
-            </div>
-          </section>
-        )}
-        {last && (
-          <section className="panel panel-body" aria-labelledby="previous-title">
-            <h2 id="previous-title">Previous round</h2>
-            <p className="small" style={{ marginTop: 6 }}>
-              Round {last.round}, {last.scenarioTitle}: ended at <strong className="num">{formatCurrency(last.endingBalance)}</strong> with a score of{' '}
-              <strong className="num">{last.scores.overall.toFixed(1)}</strong>.
-            </p>
-            <details className="disclosure" style={{ marginTop: 12 }}>
-              <summary>Show how round {last.round} was scored</summary>
-              <OutcomePanel outcome={last} config={config} variant="submitted" headingLevel={3} />
-            </details>
-          </section>
-        )}
-        <BalanceChart session={session} />
+      <div className="workspace-side">
+        <ProjectionPanel round={round} outcome={projection} config={config} />
       </div>
     </div>
+  );
+}
+
+/** Earlier rounds: the last result in brief (full report on request), the balance chart and the ledger. */
+function History({ session }: { session: SimulationSession }) {
+  const last = session.results[session.results.length - 1];
+  if (!last) return null;
+  return (
+    <section className="history" aria-labelledby="history-title">
+      <h2 id="history-title">So far</h2>
+      <div className="history-grid">
+        <div className="sheet sheet-section previous">
+          <h3>Previous round</h3>
+          <p className="small">
+            Round {last.round}, {last.scenarioTitle}: ended at <strong className="num">{formatCurrency(last.endingBalance)}</strong> with a round score of{' '}
+            <strong className="num">{formatScore(last.scores.overall)}</strong>.
+          </p>
+          <details className="disclosure">
+            <summary>
+              <Icon name="chevronRight" size={14} />
+              Show the full round {last.round} report
+            </summary>
+            <RoundReport outcome={last} config={session.config} headingLevel={3} idPrefix="previous" />
+          </details>
+        </div>
+        <BalanceChart session={session} headingLevel={3} />
+      </div>
+      <div className="sheet sheet-section">
+        <RoundLedger session={session} />
+      </div>
+    </section>
   );
 }
 
@@ -138,12 +145,15 @@ export function SimulationScreen({ session, onSubmitted }: { session: Simulation
 
   return (
     <>
-      <div className="row-between" style={{ marginBottom: 16 }}>
-        <p className="muted small">
-          {session.participantLabel ? `Playing as ${session.participantLabel}. ` : ''}
-          {session.config.name}
+      <div className="context-bar">
+        <p className="small">
+          <span className="muted">{session.participantLabel ? `Playing as ${session.participantLabel} in ` : 'Playing '}</span>
+          <strong>{session.config.name}</strong>
         </p>
-        <button type="button" className="btn" onClick={restart}>Start over</button>
+        <button type="button" className="btn btn-sm" onClick={restart}>
+          <Icon name="restart" size={14} />
+          Start over
+        </button>
       </div>
       <div className="notice-list">
         {state.resumed && (
@@ -157,13 +167,12 @@ export function SimulationScreen({ session, onSubmitted }: { session: Simulation
           </Notice>
         )}
       </div>
-      <RoundSteps config={session.config} completed={session.results.length} current={round} />
+      <div className="round-head">
+        <RoundTimeline config={session.config} completed={session.results.length} current={round} />
+        <PortfolioStrip session={session} />
+      </div>
       <RoundWorkspace key={round} session={session} round={round} onSubmitted={onSubmitted} />
-      <section className="panel" style={{ marginTop: 24 }} aria-label="Round history">
-        <div className="panel-body">
-          <RoundLedger session={session} />
-        </div>
-      </section>
+      <History session={session} />
       {dialog}
     </>
   );

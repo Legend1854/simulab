@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { Logo } from '../components/Logo';
+import { LogoMark } from '../components/Logo';
 import { Notice } from '../components/Notice';
 import { HomePage } from '../features/home/HomePage';
 import { StudentPage } from '../features/student/StudentPage';
@@ -8,7 +8,8 @@ import { hrefFor, useRoute, type Route } from './router';
 import { StoreProvider, useAppState, useStore } from './StoreContext';
 import type { AppStore } from './store';
 
-// The instructor dashboard (and SheetJS, which only it uses) is loaded on demand, keeping the student bundle small.
+// The instructor workspace (and the workbook reader/writer, which only it uses) is loaded on demand,
+// keeping the student bundle small.
 const InstructorPage = lazy(() => import('../features/instructor/InstructorPage').then((module) => ({ default: module.InstructorPage })));
 
 function NavLink({ route, current, children }: { route: Route; current: Route; children: React.ReactNode }) {
@@ -39,7 +40,7 @@ function Layout() {
       <header className="site-header">
         <div className="shell">
           <a className="wordmark" href="#/">
-            <Logo />
+            <LogoMark />
             SimuLab
           </a>
           <nav className="site-nav" aria-label="Main">
@@ -64,7 +65,7 @@ function Layout() {
           {route.page === 'home' && <HomePage />}
           {route.page === 'student' && <StudentPage />}
           {route.page === 'instructor' && (
-            <Suspense fallback={<p className="muted" role="status">Loading the instructor dashboard…</p>}>
+            <Suspense fallback={<p className="muted" role="status">Loading the instructor workspace…</p>}>
               <InstructorPage tab={route.tab} />
             </Suspense>
           )}
@@ -72,8 +73,11 @@ function Layout() {
       </main>
       <footer className="site-footer">
         <div className="shell">
-          <p>Educational simulation with hypothetical scenarios. It is not financial advice and does not use real market data.</p>
-          <p>An independent student portfolio project. It is not affiliated with or endorsed by any university. Results are stored only in this browser.</p>
+          <LogoMark size={22} />
+          <div>
+            <p>An educational simulation with invented scenarios. It is not financial advice and uses no real market data.</p>
+            <p>An independent student portfolio project, not affiliated with or endorsed by any university. Results are stored only in this browser.</p>
+          </div>
         </div>
       </footer>
     </>

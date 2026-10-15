@@ -40,15 +40,19 @@ describe('student flow', () => {
 
     const projection = screen.getByRole('region', { name: 'Projected result for round 1' });
     expect(within(projection).getByText('Projection, not submitted')).toBeInTheDocument();
-    // Shown in the headline figure and as the result of the formula bar's last step.
+    // Shown in the headline figure and as the result of the last calculation step.
     expect(within(projection).getAllByText('$10,700.00')).toHaveLength(2);
     expect(screen.getByTestId('projection-summary')).toHaveTextContent('Ending balance $10,700.00, round score 82.8');
     expect(activeSessionOf(store.getState())?.results).toHaveLength(0); // projection records nothing
 
     await user.click(screen.getByRole('button', { name: 'Submit round 1' }));
-    const result = screen.getByRole('region', { name: 'Round 1 result' });
-    expect(within(result).getByText('✓ Submitted')).toBeInTheDocument();
-    expect(within(result).getAllByText('$10,700.00')).toHaveLength(2);
+    const result = screen.getByRole('article', { name: 'Round 1 result' });
+    expect(within(result).getByText('Submitted')).toBeInTheDocument();
+    expect(within(result).queryByText('Projection, not submitted')).not.toBeInTheDocument();
+    // Headline figure, the round statement's last line, and the last calculation step all agree.
+    expect(within(result).getAllByText('$10,700.00')).toHaveLength(3);
+    const statement = within(result).getByRole('table', { name: 'Round statement' });
+    expect(within(statement).getByText('$10,700.00')).toBeInTheDocument();
     expect(activeSessionOf(store.getState())?.results).toHaveLength(1);
 
     await user.click(screen.getByRole('button', { name: 'Continue to round 2' }));
@@ -64,7 +68,7 @@ describe('student flow', () => {
     await user.dblClick(screen.getByRole('button', { name: 'Submit round 1' }));
     const session = activeSessionOf(store.getState());
     expect(session?.results).toHaveLength(1);
-    expect(screen.getByRole('region', { name: 'Round 1 result' })).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Round 1 result' })).toBeInTheDocument();
   });
 
   it('completes all five rounds and shows the final results with a rating', async () => {

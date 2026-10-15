@@ -1,4 +1,6 @@
 import { EmptyState } from '../../components/EmptyState';
+import { Icon } from '../../components/Icon';
+import { AllocationBar } from '../../components/viz/AllocationBar';
 import type { SimulationSession } from '../../domain/types';
 import { formatCurrency, formatReturn, formatScore } from '../../utils/format';
 
@@ -32,15 +34,14 @@ export function RoundLedger({ session, caption = 'Round history' }: { session: S
               <th scope="row">{result.round}</th>
               <td>{result.scenarioTitle}</td>
               <td>{config.riskProfiles.find((p) => p.id === result.decision.riskProfileId)?.name ?? result.decision.riskProfileId}</td>
-              <td>
-                {config.assets
-                  .filter((asset) => (result.decision.allocationPct[asset.id] ?? 0) > 0)
-                  .map((asset) => `${asset.name} ${result.decision.allocationPct[asset.id]}%`)
-                  .join(', ')}
+              <td className="ledger-alloc">
+                <AllocationBar assets={config.assets} allocationPct={result.decision.allocationPct} legend={false} size="slim" />
               </td>
               <td className="num">
-                <span aria-hidden="true">{result.netReturn > 0 ? '▲ ' : result.netReturn < 0 ? '▼ ' : ''}</span>
-                {formatReturn(result.netReturn)}
+                <span className={`change change-${result.netReturn > 0 ? 'gain' : result.netReturn < 0 ? 'loss' : 'flat'}`}>
+                  <Icon name={result.netReturn > 0 ? 'up' : result.netReturn < 0 ? 'down' : 'flat'} size={12} />
+                  {formatReturn(result.netReturn)}
+                </span>
               </td>
               <td className="num">{formatCurrency(result.endingBalance)}</td>
               <td className="num">{formatScore(result.scores.performance)}</td>
