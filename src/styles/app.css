@@ -125,7 +125,7 @@ legend { padding: 0; font-weight: 650; font-size: var(--text-sm); margin-bottom:
 .change-flat { color: var(--ink-2); }
 
 /* ---------- Tables ---------- */
-.table-wrap { width: 100%; overflow-x: auto; }
+.table-wrap { position: relative; width: 100%; overflow-x: auto; } /* relative: keeps visually-hidden text from escaping the scroll box */
 .table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .table caption { text-align: left; font-weight: 650; padding-bottom: var(--space-2); }
 .table th, .table td { padding: 10px 12px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
@@ -149,7 +149,7 @@ legend { padding: 0; font-weight: 650; font-size: var(--text-sm); margin-bottom:
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); flex-wrap: wrap; }
 
 /* ---------- Tabs ---------- */
-.tablist { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--rule); margin-bottom: var(--space-5); overflow-x: auto; }
+.tablist { position: relative; display: flex; gap: var(--space-1); border-bottom: 1px solid var(--rule); margin-bottom: var(--space-5); overflow-x: auto; }
 .tab { padding: 10px 14px; border: 0; background: none; color: var(--ink-2); font-weight: 650; font-size: var(--text-sm); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; text-decoration: none; white-space: nowrap; }
 .tab:hover { color: var(--ink); }
 .tab[aria-current='page'] { color: var(--ink); border-bottom-color: var(--teal); }

@@ -7,6 +7,7 @@ import type { SpreadsheetImportResult, ValidationIssue } from '../../domain/type
 import { downloadWorkbook, safeFilename } from '../../services/exports/download';
 import { workbookBytes } from '../../services/spreadsheets/exportWorkbook';
 import { importWorkbook } from '../../services/spreadsheets/importWorkbook';
+import { readFileBytes } from '../../services/spreadsheets/readFile';
 import { FILE_LIMITS, SHEET_NAMES } from '../../services/spreadsheets/schema';
 import { formatCurrency, formatPct } from '../../utils/format';
 
@@ -63,7 +64,7 @@ export function SpreadsheetTab() {
       result = { ok: false, issues: [{ code: 'file_too_large', severity: 'error', message: `The file is ${(file.size / (1024 * 1024)).toFixed(1)} MB; the limit is ${FILE_LIMITS.maxFileBytes / (1024 * 1024)} MB.` }] };
     } else {
       try {
-        result = importWorkbook(new Uint8Array(await file.arrayBuffer()), file.name);
+        result = importWorkbook(await readFileBytes(file), file.name);
       } catch {
         result = { ok: false, issues: [{ code: 'unreadable', severity: 'error', message: 'The file could not be read by the browser.' }] };
       }

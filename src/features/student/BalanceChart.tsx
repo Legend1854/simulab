@@ -72,7 +72,8 @@ export function BalanceChart({ session, title = 'Portfolio value by round' }: { 
         <>
           <div className="chart-box" aria-hidden="true">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={data} margin={{ top: 20, right: 64, bottom: 4, left: 4 }}>
+              {/* The SVG is decorative for assistive technology (the caption and history table carry the data), so its keyboard layer is off. */}
+              <ComposedChart data={data} margin={{ top: 20, right: 64, bottom: 4, left: 4 }} accessibilityLayer={false}>
                 <CartesianGrid vertical={false} stroke={RULE} strokeWidth={1} />
                 <XAxis dataKey="label" tickLine={false} axisLine={{ stroke: RULE }} tick={{ fill: MUTED, fontSize: 12 }} />
                 <YAxis
