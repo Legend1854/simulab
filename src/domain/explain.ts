@@ -11,6 +11,8 @@ const term = (text: string, value: number): string => (value < 0 ? `(${text})` :
 
 export interface CalculationStep {
   label: string;
+  /** The general formula, as written in docs/MODEL_SPEC.md. */
+  formula: string;
   /** The formula with the student's numbers substituted in. */
   expression: string;
   result: string;
@@ -23,16 +25,19 @@ export function calculationSteps(outcome: RoundOutcome, config: SimulationConfig
   return [
     {
       label: 'Gross return',
+      formula: 'Σ weight × asset return',
       expression: terms.length > 0 ? terms.join(' + ') : '0',
       result: formatReturn(outcome.grossReturn, 2, false),
     },
     {
       label: 'Net return',
+      formula: 'gross return − annual fee',
       expression: `${formatReturn(outcome.grossReturn, 2, false)} − ${formatPct(config.annualFeePct)} fee`,
       result: formatReturn(outcome.netReturn, 2, false),
     },
     {
       label: 'Ending balance',
+      formula: 'starting balance × (1 + net return)',
       expression:
         outcome.netReturn < 0
           ? `${formatCurrency(outcome.startingBalance)} × (1 − ${formatReturn(Math.abs(outcome.netReturn), 2, false)})`
@@ -115,3 +120,106 @@ export function explainScores(outcome: RoundOutcome, config: SimulationConfig, p
 
 export const overallFormula = (explanations: ReadonlyArray<ScoreExplanation>): string =>
   explanations.map((row) => `${formatNumber(row.weightPct / 100, 4)} × ${formatScore(row.score)}`).join(' + ');
+
+/* ------------------------------------------------------------------ */
+/* Round statement and feedback                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A round as a small money statement. Every amount is the engine's own result multiplied out; nothing
+ * is recalculated. startingBalance + grossAmount - feeAmount equals endingBalance (up to floating-point
+ * dust far below a cent).
+ */
+export interface RoundStatement {
+  startingBalance: number;
+  grossReturn: number;
+  grossAmount: number;
+  feeRate: number;
+  feeAmount: number;
+  netReturn: number;
+  endingBalance: number;
+}
+
+export function roundStatement(outcome: RoundOutcome): RoundStatement {
+  return {
+    startingBalance: outcome.startingBalance,
+    grossReturn: outcome.grossReturn,
+    grossAmount: outcome.startingBalance * outcome.grossReturn,
+    feeRate: outcome.feeRate,
+    feeAmount: outcome.startingBalance * outcome.feeRate,
+    netReturn: outcome.netReturn,
+    endingBalance: outcome.endingBalance,
+  };
+}
+
+export interface FeedbackPoint {
+  key: ScoreKey;
+  /** Points of the overall score this component gave up: weight x (100 - score). */
+  pointsLost: number;
+  text: string;
+}
+
+const assetName = (config: SimulationConfig, id: string): string => config.assets.find((asset) => asset.id === id)?.name ?? id;
+
+/**
+ * Plain-language feedback for one round, ordered from the component that cost the most overall points
+ * to the one that cost the least. Every sentence is derived from the outcome and the configuration; it
+ * describes trade-offs and never claims there was one correct allocation.
+ */
+export function roundFeedback(outcome: RoundOutcome, config: SimulationConfig, profileName: string): FeedbackPoint[] {
+  const { weights } = config.scoring;
+  const lost = (weightPct: number, score: number) => (weightPct / 100) * (100 - score);
+  const held = outcome.contributions.filter((item) => item.weight > 0);
+
+  // Performance: which holdings added and subtracted the most return.
+  const sorted = [...held].sort((a, b) => b.contributionPct - a.contributionPct);
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+  const describe = (item: (typeof held)[number]) =>
+    `${assetName(config, item.assetId)} (${formatNumber(item.weight * 100, 0)}% × ${term(formatPct(item.returnPct), item.returnPct)} = ${formatPct(item.contributionPct, 2, true)} of return)`;
+  let performance = `Your net return after the ${formatPct(config.annualFeePct)} fee was ${formatReturn(outcome.netReturn)}.`;
+  if (best && best.contributionPct > 0) performance += ` The largest contribution came from ${describe(best)}.`;
+  if (worst && worst !== best && worst.contributionPct < 0) performance += ` The largest drag was ${describe(worst)}.`;
+
+  // Risk fit: how far from the target, and the smallest single move that would close the gap.
+  const gap = outcome.portfolioRisk - outcome.targetRisk;
+  let riskFit: string;
+  if (Math.abs(gap) < 0.5) {
+    riskFit = `Your portfolio risk of ${formatNumber(outcome.portfolioRisk, 1)} sat on the ${profileName} target of ${formatNumber(outcome.targetRisk, 1)}.`;
+  } else {
+    const above = gap > 0;
+    // Move money out of the held asset that pushes risk the wrong way (largest holding breaks ties)…
+    const heldAssets = config.assets
+      .filter((asset) => (outcome.decision.allocationPct[asset.id] ?? 0) > 0)
+      .sort((a, b) => (above ? b.riskRating - a.riskRating : a.riskRating - b.riskRating) || (outcome.decision.allocationPct[b.id] ?? 0) - (outcome.decision.allocationPct[a.id] ?? 0));
+    // …into the asset that pulls it furthest the other way.
+    const receivers = [...config.assets].sort((a, b) => (above ? a.riskRating - b.riskRating : b.riskRating - a.riskRating));
+    const from = heldAssets[0];
+    const to = receivers[0];
+    riskFit = `Your portfolio risk of ${formatNumber(outcome.portfolioRisk, 1)} was ${formatNumber(Math.abs(gap), 1)} points ${above ? 'above' : 'below'} the ${profileName} target of ${formatNumber(outcome.targetRisk, 1)}.`;
+    if (from && to && from.riskRating !== to.riskRating) {
+      const shift = (Math.abs(gap) * 100) / Math.abs(from.riskRating - to.riskRating);
+      const available = (outcome.decision.allocationPct[from.id] ?? 0) >= shift;
+      riskFit += available
+        ? ` Moving about ${formatNumber(shift, 1)} percentage points from ${from.name} (risk ${formatNumber(from.riskRating)}) to ${to.name} (risk ${formatNumber(to.riskRating)}) would have closed the gap.`
+        : ` Shifting money ${above ? `towards lower-rated assets such as ${to.name}` : `towards higher-rated assets such as ${to.name}`} would have moved it closer.`;
+    } else if (from && to) {
+      riskFit += ' Every asset has the same risk rating, so the allocation cannot change portfolio risk.';
+    }
+  }
+
+  // Diversification: the largest holding against an even split.
+  const largest = [...held].sort((a, b) => b.weight - a.weight)[0];
+  const even = 100 / config.assets.length;
+  const diversification =
+    outcome.scores.diversification >= 99.9995
+      ? 'Your money was spread evenly, the maximum diversification score.'
+      : `Your largest holding was ${largest ? `${assetName(config, largest.assetId)} at ${formatNumber(largest.weight * 100, 0)}%` : 'a single asset'}; an even split (${formatNumber(even, 1)}% each) gives the maximum diversification score, but may not suit your target risk.`;
+
+  const points: FeedbackPoint[] = [
+    { key: 'performance', pointsLost: lost(weights.performancePct, outcome.scores.performance), text: performance },
+    { key: 'riskFit', pointsLost: lost(weights.riskFitPct, outcome.scores.riskFit), text: riskFit },
+    { key: 'diversification', pointsLost: lost(weights.diversificationPct, outcome.scores.diversification), text: diversification },
+  ];
+  return points.sort((a, b) => b.pointsLost - a.pointsLost);
+}
