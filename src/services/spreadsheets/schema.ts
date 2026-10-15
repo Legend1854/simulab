@@ -23,6 +23,12 @@ export const FILE_LIMITS = {
   maxRows: 500,
   maxColumns: 20,
   maxReportedIssues: 100,
+  /** Limits on the zip archive inside the .xlsx, checked before anything is decompressed. */
+  archive: {
+    maxEntries: 1000,
+    maxPartBytes: 10 * 1024 * 1024,
+    maxTotalBytes: 25 * 1024 * 1024,
+  },
 } as const;
 
 export type ColumnType = 'text' | 'number' | 'integer';

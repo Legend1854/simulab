@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import { evaluateRound } from '../../src/domain/calculations';
 import type { SimulationConfig } from '../../src/domain/types';
+import { parseCellRef } from '../../src/services/spreadsheets/ooxml/cellRef';
+import { cellKey, readXlsx, type XlsxCell } from '../../src/services/spreadsheets/ooxml/readXlsx';
 import { cloneConfig, decision } from '../helpers';
 
 /**
@@ -13,19 +14,31 @@ import { cloneConfig, decision } from '../helpers';
  * Three things are kept separate on purpose:
  *   1. SPREADSHEET INPUTS  - read from the workbook's Inputs and Scenarios sheets.
  *   2. APPLICATION LOGIC   - the TypeScript engine in src/domain. It never reads the Model sheet.
- *   3. SPREADSHEET OUTPUT  - values Excel last calculated and saved in the Model sheet (read-only here).
+ *   3. SPREADSHEET OUTPUT  - values the spreadsheet application last calculated and saved in the Model
+ *                            sheet. These cells hold formulas; SimuLab's reader reports that and returns
+ *                            the saved result without evaluating anything.
  * The test feeds (1) into (2) and compares the result with (3).
+ *
+ * The workbook was written by a different tool from SimuLab's own writer (it uses x: namespace prefixes,
+ * absolute relationship targets and byte-order marks), so this test also checks the reader on a file
+ * SimuLab did not produce.
  *
  * Documented difference: MarketLab rounds the diversification and risk-fit sub-scores to whole numbers
  * before combining them; SimuLab keeps full precision and rounds only for display. So the whole-number
  * decision score must agree exactly, and the unrounded sub-scores must be within 0.5 of the rounded ones.
  */
-const workbook = XLSX.read(readFileSync(resolve(process.cwd(), 'tests/fixtures/MarketLab_Reference_Model.xlsx')), { type: 'buffer' });
+const workbook = readXlsx(new Uint8Array(readFileSync(resolve(process.cwd(), 'tests/fixtures/MarketLab_Reference_Model.xlsx'))));
+
+function cellAt(sheet: string, address: string): XlsxCell | undefined {
+  const ref = parseCellRef(address);
+  if (!ref) throw new Error(`bad address ${address}`);
+  return workbook.sheets.find((s) => s.name === sheet)?.cells.get(cellKey(ref.row, ref.col));
+}
 
 const value = (sheet: string, address: string): number => {
-  const cellValue = workbook.Sheets[sheet]?.[address]?.v;
-  if (typeof cellValue !== 'number') throw new Error(`${sheet}!${address} is not a number`);
-  return cellValue;
+  const cell = cellAt(sheet, address);
+  if (cell?.kind !== 'number') throw new Error(`${sheet}!${address} is not a number`);
+  return cell.value;
 };
 
 // Legacy column order on both sheets: Cash, Bonds, Broad market, Technology.
@@ -41,7 +54,7 @@ function configFromWorkbookInputs(): SimulationConfig {
     const row = FIRST_ROUND_ROW + index;
     return {
       id: `s${index + 1}`,
-      title: String(workbook.Sheets.Scenarios?.[`B${row}`]?.v),
+      title: String(cellAt('Scenarios', `B${row}`)?.value),
       phase: '',
       description: '',
       lesson: '',
@@ -50,6 +63,14 @@ function configFromWorkbookInputs(): SimulationConfig {
   });
   return config;
 }
+
+describe('reading the reference workbook', () => {
+  it('finds the three sheets and reports the Model outputs as formulas with saved results', () => {
+    expect(workbook.sheets.map((s) => s.name)).toEqual(['Inputs', 'Scenarios', 'Model']);
+    expect(cellAt('Model', 'F4')).toMatchObject({ kind: 'number', value: 10750, hasFormula: true });
+    expect(cellAt('Inputs', 'B3')).toMatchObject({ kind: 'number', value: 10000, hasFormula: false });
+  });
+});
 
 describe('the SimuLab engine reproduces the MarketLab reference workbook (fee set to 0)', () => {
   const config = configFromWorkbookInputs();

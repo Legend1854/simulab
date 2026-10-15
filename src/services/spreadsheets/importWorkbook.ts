@@ -1,17 +1,20 @@
-import * as XLSX from 'xlsx';
 import { SCHEMA_VERSION } from '../../domain/constants';
 import type { Asset, ImportSummary, RiskProfile, Scenario, SimulationConfig, SpreadsheetImportResult, ValidationIssue } from '../../domain/types';
 import { validateConfig } from '../../domain/validation';
+import { isDateFormat, isPercentFormat } from './ooxml/numberFormats';
+import { cellKey, readXlsx, XlsxReadError, type XlsxCell, type XlsxSheet, type XlsxWorkbook } from './ooxml/readXlsx';
 import { COLUMNS, FILE_LIMITS, REQUIRED_SHEETS, SETTINGS, SHEET_NAMES, type ColumnSpec } from './schema';
 
 /**
  * Explicit mapping from the documented workbook format (schema.ts) to the typed SimulationConfig.
  *
- * - SheetJS only parses the file. Formulas are NEVER executed: for a formula cell, the value Excel
- *   last saved is read and a warning is shown. Macros are not loaded.
+ * - readXlsx() only reads values. Formulas are NEVER executed: for a formula cell, the value the
+ *   spreadsheet application last saved is read and a warning is shown. Macro parts are never opened.
  * - Nothing here touches application state. The caller receives either a complete, valid
  *   configuration or a list of problems, never a partial result.
  */
+
+export { isDateFormat };
 
 interface CellData {
   value: string | number | null;
@@ -67,63 +70,54 @@ class IssueLog {
 
 const normalise = (text: string): string => text.trim().toLowerCase();
 
-function findSheet(workbook: XLSX.WorkBook, wanted: string): XLSX.WorkSheet | undefined {
-  const match = workbook.SheetNames.find((name) => normalise(name) === normalise(wanted));
-  return match === undefined ? undefined : workbook.Sheets[match];
-}
-
-/**
- * True when a number format displays a date or time. Excel stores dates as serial numbers, so the
- * format is the only signal. Quoted literals, [bracketed] sections and escaped characters are ignored.
- * (SheetJS has SSF.is_date, but its ESM build does not export SSF in every environment.)
- */
-export function isDateFormat(format: string): boolean {
-  const stripped = format.replace(/"[^"]*"/g, '').replace(/\[[^\]]*\]/g, '').replace(/\\./g, '');
-  return /[dmyhs]/i.test(stripped);
+function findSheet(workbook: XlsxWorkbook, wanted: string): XlsxSheet | undefined {
+  return workbook.sheets.find((sheet) => normalise(sheet.name) === normalise(wanted));
 }
 
 const EMPTY_CELL: CellData = { value: null, hasFormula: false, isPercentFormat: false, isError: false, isOtherType: false };
 
-function readCell(sheet: XLSX.WorkSheet, row: number, col: number): CellData {
-  const cell = sheet[XLSX.utils.encode_cell({ r: row, c: col })] as XLSX.CellObject | undefined;
+/** Translates a raw workbook cell into the few facts the import rules care about. */
+function toCellData(cell: XlsxCell | undefined): CellData {
   if (!cell) return EMPTY_CELL;
-  const flags = {
-    hasFormula: typeof cell.f === 'string' && cell.f.length > 0,
-    isPercentFormat: typeof cell.z === 'string' && cell.z.includes('%'),
-  };
-  if (cell.t === 'e') return { ...EMPTY_CELL, ...flags, isError: true };
-  // Excel stores dates as numbers with a date format; treat them as unsupported rather than as a number.
-  if (cell.t === 'n' && typeof cell.z === 'string' && isDateFormat(cell.z)) return { ...EMPTY_CELL, ...flags, isOtherType: true };
-  if (cell.t === 'n' && typeof cell.v === 'number') return { ...EMPTY_CELL, ...flags, value: Number.isFinite(cell.v) ? cell.v : null };
-  if (cell.t === 's' && typeof cell.v === 'string') {
-    const trimmed = cell.v.trim();
-    return { ...EMPTY_CELL, ...flags, value: trimmed.length === 0 ? null : trimmed };
+  const flags = { hasFormula: cell.hasFormula, isPercentFormat: isPercentFormat(cell.format) };
+  switch (cell.kind) {
+    case 'error':
+      return { ...EMPTY_CELL, ...flags, isError: true };
+    case 'boolean':
+    case 'date':
+      return { ...EMPTY_CELL, ...flags, isOtherType: true };
+    case 'empty':
+      return { ...EMPTY_CELL, ...flags };
+    case 'number':
+      // Excel stores dates as numbers with a date format; treat them as unsupported rather than as a number.
+      return isDateFormat(cell.format) ? { ...EMPTY_CELL, ...flags, isOtherType: true } : { ...EMPTY_CELL, ...flags, value: cell.value };
+    case 'text': {
+      const trimmed = cell.value.trim();
+      return { ...EMPTY_CELL, ...flags, value: trimmed.length === 0 ? null : trimmed };
+    }
   }
-  // Type 'z' is a stub: SheetJS reports a formula with no saved value as a stub whose v is a fake 0,
-  // so stubs are always treated as "no value".
-  if (cell.t === 'z' || cell.v === undefined || cell.v === null) return { ...EMPTY_CELL, ...flags };
-  return { ...EMPTY_CELL, ...flags, isOtherType: true }; // booleans and dates
 }
 
+const readCell = (sheet: XlsxSheet, row: number, col: number): CellData => toCellData(sheet.cells.get(cellKey(row, col)));
+
 /** Reads a sheet into rows keyed by (normalised) header name, checking the header row against the schema. */
-function readTable(sheet: XLSX.WorkSheet, sheetName: string, expected: ReadonlyArray<ColumnSpec>, log: IssueLog): Table | null {
-  const ref = sheet['!ref'];
-  if (!ref) {
+function readTable(sheet: XlsxSheet, sheetName: string, expected: ReadonlyArray<ColumnSpec>, log: IssueLog): Table | null {
+  const range = sheet.bounds;
+  if (!range) {
     log.error('empty_sheet', `Sheet "${sheetName}" is empty.`, sheetName);
     return null;
   }
-  const range = XLSX.utils.decode_range(ref);
-  if (range.e.r - range.s.r + 1 > FILE_LIMITS.maxRows || range.e.c - range.s.c + 1 > FILE_LIMITS.maxColumns) {
+  if (range.lastRow - range.firstRow + 1 > FILE_LIMITS.maxRows || range.lastCol - range.firstCol + 1 > FILE_LIMITS.maxColumns) {
     log.error('sheet_too_large', `Sheet "${sheetName}" is larger than the supported ${FILE_LIMITS.maxRows} rows by ${FILE_LIMITS.maxColumns} columns.`, sheetName);
     return null;
   }
 
   const headerByIndex = new Map<number, string>();
-  for (let c = range.s.c; c <= range.e.c; c += 1) {
-    const header = readCell(sheet, range.s.r, c);
+  for (let c = range.firstCol; c <= range.lastCol; c += 1) {
+    const header = readCell(sheet, range.firstRow, c);
     if (typeof header.value === 'string') headerByIndex.set(c, header.value);
   }
-  const headerRow = range.s.r + 1;
+  const headerRow = range.firstRow + 1;
   const seen = new Set<string>();
   for (const header of headerByIndex.values()) {
     if (seen.has(normalise(header))) log.error('duplicate_column', `Column "${header}" appears more than once.`, sheetName, headerRow, header);
@@ -140,7 +134,7 @@ function readTable(sheet: XLSX.WorkSheet, sheetName: string, expected: ReadonlyA
   }
 
   const rows: TableRow[] = [];
-  for (let r = range.s.r + 1; r <= range.e.r; r += 1) {
+  for (let r = range.firstRow + 1; r <= range.lastRow; r += 1) {
     const cells = new Map<string, CellData>();
     let blank = true;
     for (const [c, header] of headerByIndex) {
@@ -309,20 +303,19 @@ export function importWorkbook(bytes: Uint8Array, fileName: string): Spreadsheet
     return fail('not_xlsx', 'This file is not a valid .xlsx workbook. It may be corrupted, renamed from another format, or saved in an older Excel format.');
   }
 
-  /* 2. Parse safely: values and formula text only; no macros, no styles. */
-  let workbook: XLSX.WorkBook;
+  /* 2. Parse safely: values, formula presence and number formats only. Size limits are checked first. */
+  let workbook: XlsxWorkbook;
   try {
-    workbook = XLSX.read(bytes, {
-      type: 'array', cellFormula: true, cellNF: true, cellHTML: false, cellStyles: false, cellDates: false,
-      bookVBA: false, sheetStubs: true, sheetRows: FILE_LIMITS.maxRows + 1,
-    });
-  } catch {
-    return fail('unreadable', 'The workbook could not be read. It may be corrupted or use features SimuLab does not support.');
+    workbook = readXlsx(bytes, FILE_LIMITS.archive);
+  } catch (caught) {
+    if (caught instanceof XlsxReadError && caught.code === 'too_large') return fail('file_too_large', `${caught.message} Workbooks this large are not supported.`);
+    const detail = caught instanceof XlsxReadError ? ` ${caught.message}` : '';
+    return fail('unreadable', `The workbook could not be read. It may be corrupted or use features SimuLab does not support.${detail}`);
   }
 
   /* 3. Structure: required sheets and header rows. */
   const log = new IssueLog();
-  const sheets = new Map<string, XLSX.WorkSheet>();
+  const sheets = new Map<string, XlsxSheet>();
   for (const name of REQUIRED_SHEETS) {
     const sheet = findSheet(workbook, name);
     if (sheet) sheets.set(name, sheet);

@@ -4,39 +4,43 @@
  *   SimuLab_Example_RateCycle.xlsx   a fictional six-round scenario pack
  *   SimuLab_Invalid_Example.xlsx     the example with deliberate mistakes, to demonstrate error reporting
  * Run with: npm run gen:workbooks
+ *
+ * A fixed timestamp is written into the files so that regenerating them gives byte-identical output
+ * (and no noise in version control) unless the content really changed.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import * as XLSX from 'xlsx';
 import { DEFAULT_CONFIG } from '../src/data/defaultConfig';
 import { EXAMPLE_CONFIG } from '../src/data/exampleConfig';
-import { buildWorkbook } from '../src/services/spreadsheets/exportWorkbook';
+import { buildWorkbookSheets } from '../src/services/spreadsheets/exportWorkbook';
 import { importWorkbook } from '../src/services/spreadsheets/importWorkbook';
+import { appendRow, setCell } from '../src/services/spreadsheets/ooxml/sheetEdits';
+import { writeXlsx, type SheetInput } from '../src/services/spreadsheets/ooxml/writeXlsx';
 
+const SAMPLE_TIMESTAMP = new Date('2026-01-01T00:00:00Z');
 const outDir = resolve(process.cwd(), 'samples');
 mkdirSync(outDir, { recursive: true });
 
-const write = (name: string, wb: XLSX.WorkBook): Uint8Array => {
-  const bytes = new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
+const write = (name: string, sheets: SheetInput[]): Uint8Array => {
+  const bytes = writeXlsx(sheets, { modified: SAMPLE_TIMESTAMP });
   writeFileSync(resolve(outDir, name), bytes);
   return bytes;
 };
 
-write('SimuLab_Template.xlsx', buildWorkbook(DEFAULT_CONFIG));
-write('SimuLab_Example_RateCycle.xlsx', buildWorkbook(EXAMPLE_CONFIG));
+const templateBytes = write('SimuLab_Template.xlsx', buildWorkbookSheets(DEFAULT_CONFIG));
+const exampleBytes = write('SimuLab_Example_RateCycle.xlsx', buildWorkbookSheets(EXAMPLE_CONFIG));
 
 // Deliberate mistakes, one of each common kind. Extra rows are appended so each mistake produces one message.
-const invalid = buildWorkbook(EXAMPLE_CONFIG);
-invalid.Sheets.Returns!.C3 = { t: 's', v: 'five' };                                    // Returns row 3: non-numeric return
-XLSX.utils.sheet_add_aoa(invalid.Sheets.Returns!, [['soft_landing', 'gold', 3]], { origin: -1 }); // Returns row 26: unknown asset
-XLSX.utils.sheet_add_aoa(invalid.Sheets.Assets!, [['bonds', 'Bond ladder', '', 30]], { origin: -1 }); // Assets row 6: duplicate id
-delete invalid.Sheets.Scenarios!.C4;                                                   // Scenarios row 4: missing title
+const invalid = buildWorkbookSheets(EXAMPLE_CONFIG);
+setCell(invalid, 'Returns', 'ReturnPct', 3, 'five'); //           Returns row 3: non-numeric return
+appendRow(invalid, 'Returns', ['soft_landing', 'gold', 3]); //    Returns row 26: unknown asset
+appendRow(invalid, 'Assets', ['bonds', 'Bond ladder', '', 30]); // Assets row 6: duplicate id
+setCell(invalid, 'Scenarios', 'Title', 4, undefined); //          Scenarios row 4: missing title
 const invalidBytes = write('SimuLab_Invalid_Example.xlsx', invalid);
 
 // Sanity check: the valid samples import cleanly and the invalid one does not.
-for (const name of ['SimuLab_Template.xlsx', 'SimuLab_Example_RateCycle.xlsx']) {
-  const wb = buildWorkbook(name.includes('Example') ? EXAMPLE_CONFIG : DEFAULT_CONFIG);
-  const result = importWorkbook(new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer), name);
+for (const [name, bytes] of [['SimuLab_Template.xlsx', templateBytes], ['SimuLab_Example_RateCycle.xlsx', exampleBytes]] as const) {
+  const result = importWorkbook(bytes, name);
   if (!result.ok) throw new Error(`${name} failed to import: ${JSON.stringify(result.issues)}`);
 }
 const invalidResult = importWorkbook(invalidBytes, 'SimuLab_Invalid_Example.xlsx');

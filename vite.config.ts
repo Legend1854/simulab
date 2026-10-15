@@ -10,9 +10,9 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        // Separate long-lived vendor chunks; SheetJS is only fetched when the instructor dashboard opens.
+        // Long-lived vendor chunks. The workbook reader/writer (and fflate) live in the lazily loaded
+        // instructor chunk, so students never download them.
         manualChunks: (id) => {
-          if (id.includes('node_modules/xlsx')) return 'sheetjs';
           if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-vendor')) return 'charts';
           if (id.includes('node_modules/react') || id.includes('node_modules/scheduler')) return 'react';
           return undefined;
