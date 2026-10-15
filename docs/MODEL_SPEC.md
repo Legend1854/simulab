@@ -280,8 +280,10 @@ surrounding spaces. Every exported workbook also contains an **Instructions** sh
 **Import pipeline** (`importWorkbook`), stopping at the first stage that finds errors:
 
 1. File checks before parsing: `.xlsx` extension, not empty, at most 2 MB, starts with the ZIP signature.
-2. Parse with SheetJS: values, number formats and formula text only; macros (`bookVBA`) off; at most 500 rows read
-   per sheet; sheets over 500 rows or 20 columns are rejected.
+2. Parse with SimuLab's own reader (`services/spreadsheets/ooxml/readXlsx.ts`): the zip directory is checked first
+   (at most 1,000 entries, 10 MB per XML part, 25 MB in total, from the sizes the archive declares), then only `.xml`
+   and `.rels` parts are decompressed. It reads cell values, number formats and whether a cell holds a formula; macro
+   parts are never opened. Sheets over 500 rows or 20 columns are rejected.
 3. Structure: required sheets, required header columns, duplicate headers. Unknown columns produce a warning.
 4. Cells: required values, numbers, whole numbers, text. Numbers stored as text (including thousands separators) are
    accepted. Percent-formatted cells are rejected (a cell showing "8%" holds 0.08, which is ambiguous). Error values
@@ -293,13 +295,14 @@ surrounding spaces. Every exported workbook also contains an **Instructions** sh
 7. The shared model rules from `validateConfig` (ranges, weights total, negative-balance guard), with each problem
    mapped back to its sheet.
 
-Every problem names the sheet, the Excel row number (the header is row 1) and the column where it can. At most 100
+Every problem names the sheet, the Excel row number (the header is row 1), the column and the cell reference (for
+example `Returns!C3`) where it can. At most 100
 problems are listed. The result is all-or-nothing: either a complete valid configuration with a preview, or a list
 of problems, never a partial import. Nothing is applied until the instructor confirms.
 
 **Unsupported, and documented as such:**
 
-- **Formulas are never calculated.** SheetJS is not a formula engine. For a formula cell SimuLab reads the value
+- **Formulas are never calculated.** The reader is not a formula engine. For a formula cell SimuLab reads the value
   Excel last saved in the file and shows a warning; a formula with no saved value (for example from a generator that
   never calculated it) is rejected with advice to open and save the file in Excel.
 - Macros (`.xlsm`), legacy `.xls`, `.ods`, CSV, password-protected workbooks, merged cells inside tables, data on

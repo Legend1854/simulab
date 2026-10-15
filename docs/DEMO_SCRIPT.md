@@ -8,7 +8,8 @@ Timings are a guide.
 ## 0:00 – 0:30 Framing (home page)
 - "SimuLab is a portfolio project of mine. I rebuilt a small Excel investment game as a web app: the spreadsheet formulas
   became a tested TypeScript engine, and instructors can change the scenarios through Excel without touching code."
-- Point at the formula bar on the right: "Every number in the app shows the formula that produced it."
+- Point at Figure 1: "This is round 1 worked through live by the real engine, from the cells on the left to the
+  balance path on the right. Every number in the app can be traced back like this."
 - "It's not an RMIT product, and the instructor view is a demo role switch. The page says so."
 
 ## 0:30 – 2:15 Student round (the core loop)
@@ -17,10 +18,13 @@ Timings are a guide.
 3. Choose **Balanced**. Type allocations Cash 15, Government bonds 25, Diversified global equities 40, Technology equities 20.
    - Before finishing, show the live message: "You have N% left to allocate" and the disabled Submit button.
    - Then type 30 for Cash to show "5% over the limit", and set it back to 15.
-4. Point at the projection: "Projection, not submitted". It shows an ending balance of $10,700.00 and a round score of 82.8.
-   "That's 7.5% gross, minus the 0.5% fee, on $10,000."
-5. **Submit round 1**. In the result, walk through the formula lines: gross return, net return, ending balance, then the three
-   scores with weights. "Risk 60 matches the Balanced target exactly, so risk fit is 100."
+4. Point at the projection, with its dashed ochre border and "Projection, not submitted" label. It shows an ending
+   balance of $10,700.00 and a round score of 82.8. "That's 7.5% gross, minus the 0.5% fee, on $10,000. Ochre always
+   means provisional in this app; petrol means recorded."
+5. **Submit round 1**. The result is marked "Submitted". Click the small ③ next to the ending balance: it jumps to the
+   calculation step that produced it. Walk through the statement (gross, fee, ending), then the three scores with
+   weights. "Risk 60 matches the Balanced target exactly, so risk fit is 100." Point at "What shaped this score": the
+   parts are ordered by points lost.
 6. **Continue to round 2**: the allocation carries over. Point out that the opening balance is last round's ending
    balance.
 
@@ -30,20 +34,23 @@ Timings are a guide.
 - Mention double submission: "a double click records one round; it's blocked in the component and in the domain."
 
 ## 2:45 – 4:15 Instructor (spreadsheet workflow)
-1. **Instructor dashboard** → **Scenarios**: change a return, show the unsaved-changes bar and a field error for an
-   out-of-range value (for example 600). "Save is blocked until it's valid." Choose **Discard changes**.
-2. **Spreadsheet** → **Download a workbook**: "The template has an Instructions sheet generated from the same schema the
-   importer uses."
-3. Import `SimuLab_Invalid_Example.xlsx`: show the table with sheet, row, column and message: a duplicate asset id, a missing
-   title, "five" instead of a number, an unknown asset "gold". "Nothing changed; there are no partial imports. And formulas
-   in the workbook are never calculated."
-4. Import `SimuLab_Example_RateCycle.xlsx`: show the preview (6 rounds, A$25,000, 0.75% fee) → **Apply configuration** →
-   confirm.
+1. **Instructor workspace** → **Scenarios**: in the return matrix, type 600 for one return. Show the dark
+   unsaved-changes bar, the red count on the Scenarios tab and the problem summary. Switch to **Settings and scoring**,
+   then choose the problem in the summary: it jumps back to the exact cell. "Save is blocked until it's valid." Choose
+   **Discard changes**.
+2. **Spreadsheet** → **Download current configuration**: "The workbook has an Instructions sheet generated from the same
+   schema the importer uses."
+3. Import `SimuLab_Invalid_Example.xlsx`: the step indicator stops at "Check every row", and the table gives the exact
+   cell for each problem (for example `Returns!C3` contains "five"), plus a duplicate asset id, a missing title and an
+   unknown asset "gold". "Nothing changed; there are no partial imports. And formulas in the workbook are never
+   calculated."
+4. Import `SimuLab_Example_RateCycle.xlsx`: show the preview table of what would change (6 rounds, A$25,000, 0.75% fee)
+   → **Apply configuration** → confirm.
 5. Back to the student view: "A session already in progress keeps its own settings; new sessions use the new pack."
 
 ## 4:15 – 4:45 Results and data
-- **Sessions and results**: show the session list and the round history; export the CSV.
-  "Text that could be a spreadsheet formula is escaped, and the file opens cleanly in Excel."
+- **Sessions and results**: compare sessions in the table, open one with **Show rounds**, and export the CSV.
+  "Text that could be a spreadsheet formula is escaped, so opening the file cannot run anything."
 
 ## 4:45 – 5:00 Close with testing
 - "The engine is checked against the original workbook's saved values for all five rounds, and there are unit, component and

@@ -19,7 +19,7 @@ The facts below were checked against the code in this repository. Where somethin
 ## Five decisions worth talking about
 
 ### 1. The calculation engine is pure and knows nothing about the UI
-`src/domain/` imports no React, no browser APIs and no SheetJS. Everything the spreadsheet did is a function from typed
+`src/domain/` imports no React, no browser APIs and no spreadsheet code. Everything the spreadsheet did is a function from typed
 inputs to typed outputs (`evaluateRound`, `submitRound`, `validateConfig`).
 - **Why:** the formulas can be tested in Node without rendering anything, reviewed by a non-programmer next to the
   Excel sheet, and moved to a server unchanged. A learning designer who wants to change a rule should be able to find it
@@ -39,8 +39,9 @@ fractions. Scores are 0–100. Rounding happens only in formatting and export.
 
 ### 3. The workbook is a documented contract, and import is all-or-nothing
 `schema.ts` is the single source of truth: the importer reads it, the exporter writes the Instructions sheet from it, and
-the docs describe it. The importer maps columns explicitly (no "guess the header"), validates every cell, reports
-sheet/row/column, and returns either a complete valid configuration or nothing.
+the docs describe it. The importer maps columns explicitly (no "guess the header"), validates every cell, reports the
+exact cell (for example `Returns!C3`), and returns either a complete valid configuration or nothing. The instructor sees
+a preview of what would change before applying anything.
 - **Formulas are never executed.** It reads the value Excel saved and warns. A formula without a saved value is
   rejected. Percent-formatted cells are rejected because `8%` and `0.08` are ambiguous.
 - **Why:** instructors will edit these files by hand; the failure that matters is a plausible-looking wrong number, not a
@@ -86,16 +87,41 @@ authentication, and store sessions in a database.
 
 ## Testing, in a minute
 
-- 167 Vitest tests at the last measured run (unit, integration, component), 14 Playwright browser tests including
-  axe-core accessibility scans, plus the 10 original prototype tests. Exact commands and results are in `TESTING.md`.
+- 216 Vitest tests at the last measured run (unit, integration, component), 25 Playwright browser tests including
+  axe-core accessibility scans and layout checks at five screen widths, plus the 10 original prototype tests. Exact
+  commands and results are in `TESTING.md`.
 - Layers: formulas and boundaries (0%, −100%, +500%, large balances), validation, import rejections, persistence recovery,
   parity with the Excel reference, 500 seeded random invariants, user-facing component tests, and browser journeys.
 - Floating point: money and returns are `number`s with relative tolerances in tests (1 × 10⁻⁸ against Excel's saved values);
   no rounding inside the engine; fixed-point formatting only on output. For a real-money system I would use integer
   minor units or a decimal library, and I would say that if asked. Here the model is educational.
-- Bugs found by testing, which make good stories: SheetJS's ES-module build under Node has no `XLSX.SSF` (so I wrote
-  my own date-format detection); cascading import errors; a formula cell without a saved value being read as "empty"; a mobile layout
-  overflowing by 345 px because visually hidden text escaped a scroll box; an axe violation from the chart's keyboard layer.
+- Bugs found by testing, which make good stories: cascading import errors; a formula cell without a saved value being
+  read as "empty"; a mobile layout overflowing by 345 px because visually hidden text escaped a scroll box; an axe
+  violation from the chart's keyboard layer; and, in the redesign, a feedback rule that suggested moving money out of
+  an asset the student did not hold (a unit test caught it before it reached the screen).
+
+## Replacing a vulnerable dependency (a good story)
+
+`npm audit` flagged SheetJS `xlsx@0.18.5` (prototype pollution and ReDoS on crafted files). The fixed releases are not on
+the npm registry, only on the SheetJS CDN, which the build environment could not reach. Options were: leave the risk and
+document it, switch to another library, or read and write the small subset of `.xlsx` that SimuLab needs. Another
+library (`read-excel-file`) was considered and rejected because it does not report cell number formats, so a typed
+`8%` (stored as 0.08) would have been imported silently as 0.08%. The project now has its own reader and writer on `fflate` (a zip library): strict XML parsing
+with no DOCTYPE, size limits checked before decompression, formulas and macros never run. It is tested against
+workbooks written by openpyxl and re-saved by LibreOffice, and `npm audit` reports 0 vulnerabilities. What I would
+still do: test files saved by Microsoft Excel itself.
+
+## The redesign (if asked about the interface)
+
+- **Two accents with fixed meanings:** petrol for committed and actionable, ochre for provisional. The projection and
+  the submitted result show the same kinds of numbers, so they must never look alike.
+- **Traceability on screen:** numbered step markers link a headline figure to the calculation step that produced it,
+  and feedback is ordered by the points each score component lost.
+- **Instructor safety:** problems are counted per tab, a summary jumps to the field, the import shows a preview of what
+  would change, and destructive actions need confirmation.
+- **Checked, not assumed:** contrast ratios calculated for every text token, the asset palette checked for
+  colour-vision deficiency, axe-core scans and layout checks at five screen widths in the browser tests.
+  `docs/DESIGN_DECISIONS.md` has the details.
 
 ## Working with non-technical stakeholders
 
@@ -124,10 +150,9 @@ authentication, and store sessions in a database.
 - **Performance?** Not benchmarked. The build output shows the sizes of the files; that is all that was measured.
 - **Browsers?** Browser tests ran in Chromium only.
 - **Screen readers?** Not tested. Automated axe-core checks and keyboard play are.
-- **Security of the SheetJS dependency?** `npm audit` reports a high-severity advisory on `xlsx@0.18.5`, which cannot be fixed from
-  the npm registry (the fixed build is distributed from the SheetJS CDN, which was not reachable from the build environment).
-  Mitigations: client-side only, file size and row limits, no formula execution, and the file is the user's own. The
-  upgrade command is in the README and has not been tested.
+- **Dependencies and security?** SheetJS was replaced by an in-repo reader and writer, and `npm audit` reported 0
+  vulnerabilities afterwards. The reader has not been tested with files saved by Microsoft Excel itself, only openpyxl
+  and LibreOffice. There is no login, so this is not a secure system; see decision 5.
 - **Did you use AI?** Yes, and say so plainly: this project was built with an AI coding assistant (Claude). Be ready to
   explain every file, because the point of the exercise is that you understand the logic. Read `MODEL_SPEC.md` and
   `ARCHITECTURE.md` until you can reproduce a worked example by hand.
@@ -141,3 +166,6 @@ authentication, and store sessions in a database.
 5. What would you change first if 400 students used it at once?
 6. A number looks wrong to an academic. How would you investigate it?
 7. Why is the allocation whole-number and exactly 100 with no tolerance?
+8. Why did you write your own `.xlsx` reader instead of using a library? What are the risks of doing that?
+9. How does the interface keep a projection from being mistaken for a recorded result?
+10. How did you check the colours work for people with colour-vision deficiency?
