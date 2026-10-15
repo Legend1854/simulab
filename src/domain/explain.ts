@@ -6,6 +6,9 @@ import type { RoundOutcome, SimulationConfig } from './types';
  * that the calculation engine has already produced; they never calculate anything new.
  */
 
+/** Wraps a negative number in parentheses so "0.3 × -1%" reads as "0.3 × (-1%)". */
+const term = (text: string, value: number): string => (value < 0 ? `(${text})` : text);
+
 export interface CalculationStep {
   label: string;
   /** The formula with the student's numbers substituted in. */
@@ -16,7 +19,7 @@ export interface CalculationStep {
 export function calculationSteps(outcome: RoundOutcome, config: SimulationConfig): CalculationStep[] {
   const terms = outcome.contributions
     .filter((term) => term.weight > 0)
-    .map((term) => `${formatNumber(term.weight, 4)} × ${formatPct(term.returnPct)}`);
+    .map((item) => `${formatNumber(item.weight, 4)} × ${term(formatPct(item.returnPct), item.returnPct)}`);
   return [
     {
       label: 'Gross return',
@@ -30,7 +33,10 @@ export function calculationSteps(outcome: RoundOutcome, config: SimulationConfig
     },
     {
       label: 'Ending balance',
-      expression: `${formatCurrency(outcome.startingBalance)} × (1 + ${formatReturn(outcome.netReturn, 2, false)})`,
+      expression:
+        outcome.netReturn < 0
+          ? `${formatCurrency(outcome.startingBalance)} × (1 − ${formatReturn(Math.abs(outcome.netReturn), 2, false)})`
+          : `${formatCurrency(outcome.startingBalance)} × (1 + ${formatReturn(outcome.netReturn, 2, false)})`,
       result: formatCurrency(outcome.endingBalance),
     },
   ];
@@ -84,7 +90,7 @@ export function explainScores(outcome: RoundOutcome, config: SimulationConfig, p
       label: 'Performance',
       score: outcome.scores.performance,
       weightPct: scoring.weights.performancePct,
-      formula: `clamp(${formatNumber(scoring.performanceBaseScore)} + ${formatNumber(scoring.performancePointsPerReturnPct)} × ${formatNumber(netPct, 2)}, 0, 100)`,
+      formula: `clamp(${formatNumber(scoring.performanceBaseScore)} + ${formatNumber(scoring.performancePointsPerReturnPct)} × ${term(formatNumber(netPct, 2), netPct)}, 0, 100)`,
       reason: performanceReason,
     },
     {

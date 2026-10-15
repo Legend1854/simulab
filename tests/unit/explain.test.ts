@@ -48,3 +48,16 @@ describe('niceTicks (chart axis)', () => {
     expect(niceTicks(10000, 10000).length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('formula text with negative numbers', () => {
+  it('wraps negative terms in parentheses and subtracts a negative net return', () => {
+    const config = cloneConfig();
+    const outcome = evaluateRound(config, 1, 10700, decision(2, alloc(30, 30, 30, 10)));
+    const steps = calculationSteps(outcome, config);
+    expect(steps[0]?.expression).toBe('0.3 × 2% + 0.3 × (-1%) + 0.3 × (-14%) + 0.1 × (-28%)');
+    expect(steps[0]?.result).toBe('-6.70%');
+    expect(steps[2]?.expression).toBe('$10,700.00 × (1 − 7.20%)');
+    expect(steps[2]?.result).toBe('$9,929.60');
+    expect(explainScores(outcome, config, 'Balanced')[0]?.formula).toBe('clamp(50 + 2.5 × (-7.2), 0, 100)');
+  });
+});
